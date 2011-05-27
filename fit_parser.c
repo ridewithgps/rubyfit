@@ -351,7 +351,7 @@ static pass_device_info(const FIT_DEVICE_INFO_MESG *mesg) {
 static VALUE parse(VALUE self, VALUE original_str) {
 	int i = 0;
 	VALUE str = StringValue(original_str);
-	char *p = RSTRING(str)->ptr;
+	char *p = RSTRING_PTR(str);
 	char err_msg[128];
 	
 	FIT_UINT8 buf[8];
@@ -368,13 +368,13 @@ static VALUE parse(VALUE self, VALUE original_str) {
 	FitConvert_Init(FIT_TRUE);
 #endif
 
-	if(RSTRING(str)->len == 0) {
+	if(RSTRING_LEN(str) == 0) {
 		//sprintf(err_msg, "Passed in string with length of 0!");
 		pass_message(err_msg);
 		return Qnil;
 	}
 
-	while(i < RSTRING(str)->len && (convert_return == FIT_CONVERT_CONTINUE)) {
+	while(i < RSTRING_LEN(str) && (convert_return == FIT_CONVERT_CONTINUE)) {
 		for(buf_size=0;(buf_size < sizeof(buf)) && (p != NULL); buf_size++) {
 			buf[buf_size] = *p;
 			p++;
