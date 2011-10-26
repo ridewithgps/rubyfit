@@ -29,6 +29,7 @@ VALUE cFitHandlerSessionFun;
 VALUE cFitHandlerDeviceInfoFun;
 VALUE cFitHandlerUserProfileFun;
 VALUE cFitHandlerEventFun;
+VALUE cFitHandlerWeightScaleInfoFun;
 static ID HANDLER_ATTR;
 //garmin/dynastream, in their infinite wisdom, decided to pinch pennies on bits
 //by tinkering with well established time offsets.  This is the magic number of
@@ -61,6 +62,7 @@ static VALUE init(VALUE self, VALUE handler) {
 	cFitHandlerEventFun = rb_intern("on_event");
 	cFitHandlerDeviceInfoFun = rb_intern("on_device_info");
 	cFitHandlerUserProfileFun = rb_intern("on_user_profile");
+	cFitHandlerWeightScaleInfoFun = rb_intern("on_weight_scale_info");
 
 	return Qnil;
 }
@@ -244,9 +246,9 @@ static pass_session(const FIT_SESSION_MESG *mesg) {
 	if(mesg->num_laps != FIT_UINT16_INVALID)
 		rb_hash_aset(rh, rb_str_new2("num_laps"), UINT2NUM(mesg->num_laps));
 	/*
-	if(mesg->event != FIT_ENUM_INVALID)
+	if(mesg->event != FIT_EVENT_INVALID)
 		rb_hash_aset(rh, rb_str_new2("event"), UINT2NUM(mesg->event));
-	if(mesg->event_type != FIT_ENUM_INVALID)
+	if(mesg->event_type != FIT_EVENT_INVALID)
 		rb_hash_aset(rh, rb_str_new2("event_type"), UINT2NUM(mesg->event_type));
 	*/
 	if(mesg->avg_heart_rate != FIT_UINT8_INVALID)
@@ -257,11 +259,11 @@ static pass_session(const FIT_SESSION_MESG *mesg) {
 		rb_hash_aset(rh, rb_str_new2("avg_cadence"), UINT2NUM(mesg->avg_cadence));
 	if(mesg->max_cadence != FIT_UINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("max_cadence"), UINT2NUM(mesg->max_cadence));
-	/*
-	if(mesg->sub_sport != FIT_ENUM_INVALID)
+	if(mesg->sport != FIT_SPORT_INVALID)
 		rb_hash_aset(rh, rb_str_new2("sport"), mesg->sport);
-	if(mesg->sub_sport != FIT_ENUM_INVALID)
+	if(mesg->sub_sport != FIT_SUB_SPORT_INVALID)
 		rb_hash_aset(rh, rb_str_new2("sub_sport"), mesg->sub_sport);
+	/*
 	if(mesg->event_group != FIT_UINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("event_group"), mesg->event_group);
 	if(mesg->total_training_effect != FIT_UINT8_INVALID)
@@ -278,7 +280,7 @@ static pass_user_profile(const FIT_USER_PROFILE_MESG *mesg) {
 	if(mesg->message_index != FIT_MESSAGE_INDEX_INVALID)
 		rb_hash_aset(rh, rb_str_new2("message_index"), UINT2NUM(mesg->message_index));
 	if(mesg->weight != FIT_UINT16_INVALID)
-		rb_hash_aset(rh, rb_str_new2("weight"), rb_float_new(mesg->weight / 100.0));
+		rb_hash_aset(rh, rb_str_new2("weight"), rb_float_new(mesg->weight / 10.0));
 	if(mesg->gender != FIT_GENDER_INVALID)
 		rb_hash_aset(rh, rb_str_new2("gender"), UINT2NUM(mesg->gender));
 	if(mesg->age != FIT_UINT8_INVALID)
@@ -335,17 +337,57 @@ static pass_device_info(const FIT_DEVICE_INFO_MESG *mesg) {
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
 		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_SUCKS_OFFSET));
-	//rb_hash_aset(rh, rb_str_new2("serial_number"), mesg->serial_number);
-	//rb_hash_aset(rh, rb_str_new2("manufacturer"), mesg->manufacturer);
-	//rb_hash_aset(rh, rb_str_new2("product"), mesg->product);
-	//rb_hash_aset(rh, rb_str_new2("software_version"), mesg->software_version);
-	//rb_hash_aset(rh, rb_str_new2("battery_voltage"), mesg->battery_voltage);
-	//rb_hash_aset(rh, rb_str_new2("device_index"), mesg->device_index);
-	//rb_hash_aset(rh, rb_str_new2("device_type"), mesg->device_type);
-	//rb_hash_aset(rh, rb_str_new2("hardware_version"), mesg->hardware_version);
-	//rb_hash_aset(rh, rb_str_new2("battery_status"), mesg->battery_status);
+	if(mesg->serial_number != FIT_UINT32Z_INVALID)
+		rb_hash_aset(rh, rb_str_new2("serial_number"), UINT2NUM(mesg->serial_number));
+	if(mesg->manufacturer != FIT_MANUFACTURER_INVALID)
+		rb_hash_aset(rh, rb_str_new2("manufacturer"), UINT2NUM(mesg->manufacturer));
+	if(mesg->product != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("product"), UINT2NUM(mesg->product));
+	if(mesg->software_version != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("software_version"), UINT2NUM(mesg->software_version));
+	if(mesg->battery_voltage != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("battery_voltage"), UINT2NUM(mesg->battery_voltage));
+	if(mesg->device_index != FIT_DEVICE_INDEX_INVALID)
+		rb_hash_aset(rh, rb_str_new2("device_index"), UINT2NUM(mesg->device_index));
+	if(mesg->device_type != FIT_DEVICE_TYPE_INVALID)
+		rb_hash_aset(rh, rb_str_new2("device_type"), UINT2NUM(mesg->device_type));
+	if(mesg->hardware_version != FIT_UINT8_INVALID)
+		rb_hash_aset(rh, rb_str_new2("hardware_version"), UINT2NUM(mesg->hardware_version));
+	if(mesg->battery_status != FIT_BATTERY_STATUS_INVALID)
+		rb_hash_aset(rh, rb_str_new2("battery_status"), UINT2NUM(mesg->battery_status));
 
 	rb_funcall(cFitHandler, cFitHandlerDeviceInfoFun, 1, rh);
+}
+
+static pass_weight_scale_info(const FIT_WEIGHT_SCALE_MESG *mesg) {
+	VALUE rh = rb_hash_new();
+
+	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
+		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_SUCKS_OFFSET));
+	if(mesg->weight != FIT_WEIGHT_INVALID)
+		rb_hash_aset(rh, rb_str_new2("weight"), rb_float_new(mesg->weight / 100.0));
+	if(mesg->percent_fat != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("percent_fat"), rb_float_new(mesg->percent_fat / 100.0));
+	if(mesg->percent_hydration != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("percent_hydration"), rb_float_new(mesg->percent_hydration / 100.0));
+	if(mesg->visceral_fat_mass != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("visceral_fat_mass"), rb_float_new(mesg->visceral_fat_mass / 100.0));
+	if(mesg->bone_mass != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("bone_mass"), rb_float_new(mesg->bone_mass / 100.0));
+	if(mesg->muscle_mass != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("muscle_mass"), rb_float_new(mesg->muscle_mass / 100.0));
+	if(mesg->basal_met != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("basal_met"), rb_float_new(mesg->basal_met / 4.0));
+	if(mesg->active_met != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("active_met"), rb_float_new(mesg->active_met / 4.0));
+	if(mesg->physique_rating != FIT_UINT8_INVALID)
+		rb_hash_aset(rh, rb_str_new2("physique_rating"), rb_float_new(mesg->physique_rating));
+	if(mesg->metabolic_age != FIT_UINT8_INVALID)
+		rb_hash_aset(rh, rb_str_new2("metabolic_age"), rb_float_new(mesg->metabolic_age));
+	if(mesg->visceral_fat_rating != FIT_UINT8_INVALID)
+		rb_hash_aset(rh, rb_str_new2("visceral_fat_rating"), rb_float_new(mesg->visceral_fat_rating));
+
+	rb_funcall(cFitHandler, cFitHandlerWeightScaleInfoFun, 1, rh);
 }
 
 static VALUE parse(VALUE self, VALUE original_str) {
@@ -475,6 +517,14 @@ static VALUE parse(VALUE self, VALUE original_str) {
 							//sprintf(err_msg, "Device Info: timestamp=%u, battery_status=%u\n", (unsigned int)device_info->timestamp, device_info->battery_voltage);
 							//pass_message(err_msg);
 							pass_device_info(device_info);
+							break;
+						}
+
+						case FIT_MESG_NUM_WEIGHT_SCALE: {
+							const FIT_WEIGHT_SCALE_MESG *weight_scale_info = (FIT_WEIGHT_SCALE_MESG *) mesg;
+							//sprintf(err_msg, "Device Info: timestamp=%u, battery_status=%u\n", (unsigned int)device_info->timestamp, device_info->battery_voltage);
+							//pass_message(err_msg);
+							pass_weight_scale_info(weight_scale_info);
 							break;
 						}
 
