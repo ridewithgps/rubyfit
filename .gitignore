@@ -1,2 +1,7 @@
-fit_parser.so
-*.o
+*.gem
+.bundle
+Gemfile.lock
+pkg/*
+Makefile
+*.so
+*.swp

@@ -19,6 +19,7 @@
 
 #include "fit_convert.h"
 
+VALUE mRubyFit;
 VALUE cFitParser;
 VALUE cFitHandler;
 VALUE cFitHandlerPrintFun;
@@ -79,11 +80,11 @@ static pass_activity(const FIT_ACTIVITY_MESG *mesg) {
 	if(mesg->num_sessions != FIT_UINT16_INVALID)
 		rb_hash_aset(rh, rb_str_new2("num_sessions"), UINT2NUM(mesg->num_sessions));
 	if(mesg->type != FIT_ENUM_INVALID)
-		rb_hash_aset(rh, rb_str_new2("type"), UINT2NUM(mesg->type));
+		rb_hash_aset(rh, rb_str_new2("type"), CHR2FIX(mesg->type));
 	if(mesg->event != FIT_ENUM_INVALID)
-		rb_hash_aset(rh, rb_str_new2("event"), UINT2NUM(mesg->event));
+		rb_hash_aset(rh, rb_str_new2("event"), CHR2FIX(mesg->event));
 	if(mesg->event_type != FIT_ENUM_INVALID)
-		rb_hash_aset(rh, rb_str_new2("event_type"), UINT2NUM(mesg->event_type));
+		rb_hash_aset(rh, rb_str_new2("event_type"), CHR2FIX(mesg->event_type));
 	if(mesg->event_group != FIT_UINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("event_group"), UINT2NUM(mesg->event_group));
 
@@ -121,7 +122,6 @@ static pass_record(const FIT_RECORD_MESG *mesg) {
 		rb_hash_aset(rh, rb_str_new2("cycle_length"), UINT2NUM(mesg->cycle_length));
 	if(mesg->temperature != FIT_SINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("temperature"), INT2FIX(mesg->temperature));
-	//rb_hash_aset(rh, rb_str_new2("compressed_speed_distance"), ///wtf);
 
 	rb_funcall(cFitHandler, cFitHandlerRecordFun, 1, rh);
 }
@@ -175,10 +175,10 @@ static pass_lap(const FIT_LAP_MESG *mesg) {
 		rb_hash_aset(rh, rb_str_new2("total_ascent"), UINT2NUM(mesg->total_ascent));
 	if(mesg->total_descent != FIT_UINT16_INVALID)
 		rb_hash_aset(rh, rb_str_new2("total_descent"), UINT2NUM(mesg->total_descent));
-//	if(mesg->event != FIT_UINT32_INVALID)
-//		rb_hash_aset(rh, rb_str_new2("event"), UINT2NUM(mesg->event));
-//	if(mesg->event_type != FIT_UINT32_INVALID)
-//		rb_hash_aset(rh, rb_str_new2("event_type"), UINT2NUM(mesg->event_type));
+	if(mesg->event != FIT_EVENT_INVALID)
+		rb_hash_aset(rh, rb_str_new2("event"), CHR2FIX(mesg->event));
+	if(mesg->event_type != FIT_EVENT_INVALID)
+		rb_hash_aset(rh, rb_str_new2("event_type"), CHR2FIX(mesg->event_type));
 	if(mesg->avg_heart_rate != FIT_UINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("avg_heart_rate"), UINT2NUM(mesg->avg_heart_rate));
 	if(mesg->max_heart_rate != FIT_UINT8_INVALID)
@@ -187,11 +187,14 @@ static pass_lap(const FIT_LAP_MESG *mesg) {
 		rb_hash_aset(rh, rb_str_new2("avg_cadence"), UINT2NUM(mesg->avg_cadence));
 	if(mesg->max_cadence != FIT_UINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("max_cadence"), UINT2NUM(mesg->max_cadence));
-//	if(mesg->intensity != FIT_UINT32_INVALID)
-//		rb_hash_aset(rh, rb_str_new2("intensity"), mesg->intensity);
-//		rb_hash_aset(rh, rb_str_new2("lap_trigger"), mesg->lap_trigger);
-//		rb_hash_aset(rh, rb_str_new2("sport"), mesg->sport);
-//		rb_hash_aset(rh, rb_str_new2("event_group"), mesg->event_group);
+	if(mesg->intensity != FIT_INTENSITY_INVALID)
+		rb_hash_aset(rh, rb_str_new2("intensity"), CHR2FIX(mesg->intensity));
+        if(mesg->lap_trigger != FIT_LAP_TRIGGER_INVALID)
+		rb_hash_aset(rh, rb_str_new2("lap_trigger"), CHR2FIX(mesg->lap_trigger));
+        if(mesg->sport != FIT_SPORT_INVALID)
+		rb_hash_aset(rh, rb_str_new2("sport"), CHR2FIX(mesg->sport));
+        if(mesg->event_group != FIT_UINT8_INVALID)
+		rb_hash_aset(rh, rb_str_new2("event_group"), UINT2NUM(mesg->event_group));
 
 	rb_funcall(cFitHandler, cFitHandlerLapFun, 1, rh);
 }
@@ -227,8 +230,8 @@ static pass_session(const FIT_SESSION_MESG *mesg) {
 		rb_hash_aset(rh, rb_str_new2("message_index"), UINT2NUM(mesg->message_index));
 	if(mesg->total_calories != FIT_UINT16_INVALID)
 		rb_hash_aset(rh, rb_str_new2("total_calories"), UINT2NUM(mesg->total_calories));
-	//if(mesg->total_fat_calories != FIT_UINT16_INVALID)
-	//	rb_hash_aset(rh, rb_str_new2("total_fat_calories"), UINT2NUM(mesg->total_fat_calories));
+	if(mesg->total_fat_calories != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("total_fat_calories"), UINT2NUM(mesg->total_fat_calories));
 	if(mesg->avg_speed != FIT_UINT16_INVALID)
 		rb_hash_aset(rh, rb_str_new2("avg_speed"), rb_float_new(mesg->avg_speed / 1000.0));
 	if(mesg->max_speed != FIT_UINT16_INVALID)
@@ -245,12 +248,10 @@ static pass_session(const FIT_SESSION_MESG *mesg) {
 		rb_hash_aset(rh, rb_str_new2("first_lap_index"), UINT2NUM(mesg->first_lap_index));
 	if(mesg->num_laps != FIT_UINT16_INVALID)
 		rb_hash_aset(rh, rb_str_new2("num_laps"), UINT2NUM(mesg->num_laps));
-	/*
 	if(mesg->event != FIT_EVENT_INVALID)
-		rb_hash_aset(rh, rb_str_new2("event"), UINT2NUM(mesg->event));
+		rb_hash_aset(rh, rb_str_new2("event"), CHR2FIX(mesg->event));
 	if(mesg->event_type != FIT_EVENT_INVALID)
-		rb_hash_aset(rh, rb_str_new2("event_type"), UINT2NUM(mesg->event_type));
-	*/
+		rb_hash_aset(rh, rb_str_new2("event_type"), CHR2FIX(mesg->event_type));
 	if(mesg->avg_heart_rate != FIT_UINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("avg_heart_rate"), UINT2NUM(mesg->avg_heart_rate));
 	if(mesg->max_heart_rate != FIT_UINT8_INVALID)
@@ -260,15 +261,13 @@ static pass_session(const FIT_SESSION_MESG *mesg) {
 	if(mesg->max_cadence != FIT_UINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("max_cadence"), UINT2NUM(mesg->max_cadence));
 	if(mesg->sport != FIT_SPORT_INVALID)
-		rb_hash_aset(rh, rb_str_new2("sport"), mesg->sport);
+		rb_hash_aset(rh, rb_str_new2("sport"), CHR2FIX(mesg->sport));
 	if(mesg->sub_sport != FIT_SUB_SPORT_INVALID)
-		rb_hash_aset(rh, rb_str_new2("sub_sport"), mesg->sub_sport);
-	/*
+		rb_hash_aset(rh, rb_str_new2("sub_sport"), CHR2FIX(mesg->sub_sport));
 	if(mesg->event_group != FIT_UINT8_INVALID)
-		rb_hash_aset(rh, rb_str_new2("event_group"), mesg->event_group);
+		rb_hash_aset(rh, rb_str_new2("event_group"), UINT2NUM(mesg->event_group));
 	if(mesg->total_training_effect != FIT_UINT8_INVALID)
-		rb_hash_aset(rh, rb_str_new2("total_training_effect"), mesg->total_training_effect);
-	*/
+		rb_hash_aset(rh, rb_str_new2("total_training_effect"), UINT2NUM(mesg->total_training_effect));
 
 	rb_funcall(cFitHandler, cFitHandlerSessionFun, 1, rh);
 }
@@ -276,7 +275,8 @@ static pass_session(const FIT_SESSION_MESG *mesg) {
 static pass_user_profile(const FIT_USER_PROFILE_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
-	//rb_hash_aset(rh, rb_str_new2("friendly_name"), mesg->friendly_name);
+        if(mesg->friendly_name != FIT_STRING_INVALID)
+	        rb_hash_aset(rh, rb_str_new2("friendly_name"), rb_str_new2(mesg->friendly_name));
 	if(mesg->message_index != FIT_MESSAGE_INDEX_INVALID)
 		rb_hash_aset(rh, rb_str_new2("message_index"), UINT2NUM(mesg->message_index));
 	if(mesg->weight != FIT_UINT16_INVALID)
@@ -322,12 +322,16 @@ static pass_event(const FIT_EVENT_MESG *mesg) {
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
 		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_SUCKS_OFFSET));
-	//rb_hash_aset(rh, rb_str_new2("data"), mesg->data);
-	//rb_hash_aset(rh, rb_str_new2("data16"), mesg->data16);
-	//rb_hash_aset(rh, rb_str_new2("event"), mesg->event);
-	if(mesg->timestamp != FIT_UINT32_INVALID)
-		rb_hash_aset(rh, rb_str_new2("event_type"), UINT2NUM(mesg->event_type));
-	//rb_hash_aset(rh, rb_str_new2("event_group"), mesg->event_group);
+	if(mesg->data != FIT_UINT32_INVALID)
+                rb_hash_aset(rh, rb_str_new2("data"), UINT2NUM(mesg->data));
+	if(mesg->data16 != FIT_UINT16_INVALID)
+                rb_hash_aset(rh, rb_str_new2("data16"), UINT2NUM(mesg->data16));
+	if(mesg->timestamp != FIT_EVENT_INVALID)
+                rb_hash_aset(rh, rb_str_new2("event"), CHR2FIX(mesg->event));
+	if(mesg->timestamp != FIT_EVENT_TYPE_INVALID)
+		rb_hash_aset(rh, rb_str_new2("event_type"), CHR2FIX(mesg->event_type));
+	if(mesg->event_group != FIT_UINT8_INVALID)
+	        rb_hash_aset(rh, rb_str_new2("event_group"), UINT2NUM(mesg->event_group));
 
 	rb_funcall(cFitHandler, cFitHandlerEventFun, 1, rh);
 }
@@ -395,7 +399,7 @@ static VALUE parse(VALUE self, VALUE original_str) {
 	VALUE str = StringValue(original_str);
 	char *p = RSTRING_PTR(str);
 	char err_msg[128];
-	
+
 	FIT_UINT8 buf[8];
 	FIT_CONVERT_RETURN convert_return = FIT_CONVERT_CONTINUE;
 	FIT_UINT32 buf_size;
@@ -453,7 +457,7 @@ static VALUE parse(VALUE self, VALUE original_str) {
 
 						case FIT_MESG_NUM_USER_PROFILE: {
 							const FIT_USER_PROFILE_MESG *user_profile = (FIT_USER_PROFILE_MESG *) mesg;
-							//sprintf(err_msg, "User Profile: weight=%0.1fkg\n", user_profile->weight / 10.0f); 
+							//sprintf(err_msg, "User Profile: weight=%0.1fkg\n", user_profile->weight / 10.0f);
 							//pass_message(err_msg);
 							pass_user_profile(user_profile);
 							break;
@@ -461,7 +465,7 @@ static VALUE parse(VALUE self, VALUE original_str) {
 
 						case FIT_MESG_NUM_ACTIVITY: {
 							const FIT_ACTIVITY_MESG *activity = (FIT_ACTIVITY_MESG *) mesg;
-							//sprintf(err_msg, "Activity: timestamp=%u, type=%u, event=%u, event_type=%u, num_sessions=%u\n", activity->timestamp, activity->type, activity->event, activity->event_type, activity->num_sessions); 
+							//sprintf(err_msg, "Activity: timestamp=%u, type=%u, event=%u, event_type=%u, num_sessions=%u\n", activity->timestamp, activity->type, activity->event, activity->event_type, activity->num_sessions);
 							//pass_message(err_msg);
 							pass_activity(activity);
 
@@ -473,7 +477,7 @@ static VALUE parse(VALUE self, VALUE original_str) {
 #else
 								FitConvert_RestoreFields(&old_mesg);
 #endif
-								//sprintf(err_msg, "Restored num_sessions=1 - Activity: timestamp=%u, type=%u, event=%u, event_type=%u, num_sessions=%u\n", activity->timestamp, activity->type, activity->event, activity->event_type, activity->num_sessions); 
+								//sprintf(err_msg, "Restored num_sessions=1 - Activity: timestamp=%u, type=%u, event=%u, event_type=%u, num_sessions=%u\n", activity->timestamp, activity->type, activity->event, activity->event_type, activity->num_sessions);
 								//pass_message(err_msg);
 							}
 							break;
@@ -481,7 +485,7 @@ static VALUE parse(VALUE self, VALUE original_str) {
 
 						case FIT_MESG_NUM_SESSION: {
 							const FIT_SESSION_MESG *session = (FIT_SESSION_MESG *) mesg;
-							//sprintf(err_msg, "Session: timestamp=%u\n", session->timestamp); 
+							//sprintf(err_msg, "Session: timestamp=%u\n", session->timestamp);
 							//pass_message(err_msg);
 							pass_session(session);
 							break;
@@ -506,7 +510,7 @@ static VALUE parse(VALUE self, VALUE original_str) {
 
 						case FIT_MESG_NUM_EVENT: {
 							const FIT_EVENT_MESG *event = (FIT_EVENT_MESG *) mesg;
-							//sprintf(err_msg, "Event: timestamp=%u, event_type = %i\n", event->timestamp, event->event_type); 
+							//sprintf(err_msg, "Event: timestamp=%u, event_type = %i\n", event->timestamp, event->event_type);
 							//pass_message(err_msg);
 							pass_event(event);
 							break;
@@ -571,8 +575,9 @@ static VALUE parse(VALUE self, VALUE original_str) {
 	return Qnil;
 }
 
-void Init_fit_parser() {
-	cFitParser = rb_define_class("FitParser", rb_cObject);
+void Init_rubyfit() {
+        mRubyFit = rb_define_module("RubyFit");
+        cFitParser = rb_define_class_under(mRubyFit, "FitParser", rb_cObject);
 
 	//instance methods
 	rb_define_method(cFitParser, "initialize", init, 1);
