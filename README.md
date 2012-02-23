@@ -10,12 +10,10 @@ Anyone familiar with stream based XML processing should find using this library 
 
 Example:
 
-`
-  raw = IO.read("myfitfile.fit")
-  callbacks = FitCallbacks.new()
-  parser = RubyFit::FitParser.new(callbacks)
-  parser.parse(raw)
-  activities = callbacks.activities #assumes you have some sort of getter/attr_reader on your custom callbacks class
-`
+    raw = IO.read("myfitfile.fit")
+    callbacks = FitCallbacks.new()
+    parser = RubyFit::FitParser.new(callbacks)
+    parser.parse(raw)
+    activities = callbacks.activities #assumes you have some sort of getter/attr_reader on your custom callbacks class
 
 When I get more time I'll document the messages, but for now you can look in ext/rubyfit/rubyfit.c to see what fields are being passed.
