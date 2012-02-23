@@ -32,11 +32,13 @@ VALUE cFitHandlerUserProfileFun;
 VALUE cFitHandlerEventFun;
 VALUE cFitHandlerWeightScaleInfoFun;
 static ID HANDLER_ATTR;
-//garmin/dynastream, in their infinite wisdom, decided to pinch pennies on bits
-//by tinkering with well established time offsets.  This is the magic number of
-//seconds needed to add to their number to get the true number of seconds since
-//the epoch.  For those math challenged, this is 20 years of seconds.
-const GARMIN_SUCKS_OFFSET = 631065600;
+/*
+ * garmin/dynastream, decided to pinch pennies on bits by tinkering with well
+ * established time offsets.  This is the magic number of seconds needed to add
+ * to their number to get the true number of seconds since the epoch.
+ * This is 20 years of seconds.
+ */
+const GARMIN_TIME_OFFSET = 631065600;
 
 
 void pass_message(char *msg) {
@@ -72,11 +74,11 @@ static pass_activity(const FIT_ACTIVITY_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
-		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_SUCKS_OFFSET));
+		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_TIME_OFFSET));
 	if(mesg->total_timer_time != FIT_UINT32_INVALID)
 		rb_hash_aset(rh, rb_str_new2("total_timer_time"), rb_float_new(mesg->total_timer_time / 1000.0));
 	if(mesg->local_timestamp != FIT_DATE_TIME_INVALID)
-		rb_hash_aset(rh, rb_str_new2("local_timestamp"), rb_float_new(mesg->local_timestamp + GARMIN_SUCKS_OFFSET));
+		rb_hash_aset(rh, rb_str_new2("local_timestamp"), rb_float_new(mesg->local_timestamp + GARMIN_TIME_OFFSET));
 	if(mesg->num_sessions != FIT_UINT16_INVALID)
 		rb_hash_aset(rh, rb_str_new2("num_sessions"), UINT2NUM(mesg->num_sessions));
 	if(mesg->type != FIT_ENUM_INVALID)
@@ -95,7 +97,7 @@ static pass_record(const FIT_RECORD_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
-		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_SUCKS_OFFSET));
+		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_TIME_OFFSET));
 	if(mesg->position_lat != FIT_SINT32_INVALID)
 		rb_hash_aset(rh, rb_str_new2("position_lat"), fit_pos_to_rb(mesg->position_lat));
 	if(mesg->position_long != FIT_SINT32_INVALID)
@@ -130,9 +132,9 @@ static pass_lap(const FIT_LAP_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
-		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_SUCKS_OFFSET));
+		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_TIME_OFFSET));
 	if(mesg->start_time != FIT_DATE_TIME_INVALID)
-		rb_hash_aset(rh, rb_str_new2("start_time"), UINT2NUM(mesg->start_time + GARMIN_SUCKS_OFFSET));
+		rb_hash_aset(rh, rb_str_new2("start_time"), UINT2NUM(mesg->start_time + GARMIN_TIME_OFFSET));
 	if(mesg->start_position_lat != FIT_SINT32_INVALID)
 		rb_hash_aset(rh, rb_str_new2("start_position_lat"), fit_pos_to_rb(mesg->start_position_lat));
 	if(mesg->start_position_long != FIT_SINT32_INVALID)
@@ -203,9 +205,9 @@ static pass_session(const FIT_SESSION_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
-		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_SUCKS_OFFSET));
+		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_TIME_OFFSET));
 	if(mesg->start_time != FIT_DATE_TIME_INVALID)
-		rb_hash_aset(rh, rb_str_new2("start_time"), UINT2NUM(mesg->start_time + GARMIN_SUCKS_OFFSET));
+		rb_hash_aset(rh, rb_str_new2("start_time"), UINT2NUM(mesg->start_time + GARMIN_TIME_OFFSET));
 	if(mesg->start_position_lat != FIT_SINT32_INVALID)
 		rb_hash_aset(rh, rb_str_new2("start_position_lat"), fit_pos_to_rb(mesg->start_position_lat));
 	if(mesg->start_position_long != FIT_SINT32_INVALID)
@@ -321,7 +323,7 @@ static pass_event(const FIT_EVENT_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
-		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_SUCKS_OFFSET));
+		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_TIME_OFFSET));
 	if(mesg->data != FIT_UINT32_INVALID)
                 rb_hash_aset(rh, rb_str_new2("data"), UINT2NUM(mesg->data));
 	if(mesg->data16 != FIT_UINT16_INVALID)
@@ -340,7 +342,7 @@ static pass_device_info(const FIT_DEVICE_INFO_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
-		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_SUCKS_OFFSET));
+		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_TIME_OFFSET));
 	if(mesg->serial_number != FIT_UINT32Z_INVALID)
 		rb_hash_aset(rh, rb_str_new2("serial_number"), UINT2NUM(mesg->serial_number));
 	if(mesg->manufacturer != FIT_MANUFACTURER_INVALID)
@@ -367,7 +369,7 @@ static pass_weight_scale_info(const FIT_WEIGHT_SCALE_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
-		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_SUCKS_OFFSET));
+		rb_hash_aset(rh, rb_str_new2("timestamp"), UINT2NUM(mesg->timestamp + GARMIN_TIME_OFFSET));
 	if(mesg->weight != FIT_WEIGHT_INVALID)
 		rb_hash_aset(rh, rb_str_new2("weight"), rb_float_new(mesg->weight / 100.0));
 	if(mesg->percent_fat != FIT_UINT16_INVALID)
