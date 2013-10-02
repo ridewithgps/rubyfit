@@ -38,7 +38,7 @@ static ID HANDLER_ATTR;
  * to their number to get the true number of seconds since the epoch.
  * This is 20 years of seconds.
  */
-const GARMIN_TIME_OFFSET = 631065600;
+const long GARMIN_TIME_OFFSET = 631065600;
 
 
 void pass_message(char *msg) {
@@ -70,7 +70,7 @@ static VALUE init(VALUE self, VALUE handler) {
 	return Qnil;
 }
 
-static pass_activity(const FIT_ACTIVITY_MESG *mesg) {
+static void pass_activity(const FIT_ACTIVITY_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
@@ -93,7 +93,7 @@ static pass_activity(const FIT_ACTIVITY_MESG *mesg) {
 	rb_funcall(cFitHandler, cFitHandlerActivityFun, 1, rh);
 }
 
-static pass_record(const FIT_RECORD_MESG *mesg) {
+static void pass_record(const FIT_RECORD_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
@@ -128,7 +128,7 @@ static pass_record(const FIT_RECORD_MESG *mesg) {
 	rb_funcall(cFitHandler, cFitHandlerRecordFun, 1, rh);
 }
 
-static pass_lap(const FIT_LAP_MESG *mesg) {
+static void pass_lap(const FIT_LAP_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
@@ -151,14 +151,6 @@ static pass_lap(const FIT_LAP_MESG *mesg) {
 		rb_hash_aset(rh, rb_str_new2("total_distance"), rb_float_new(mesg->total_distance / 100.0));
 	if(mesg->total_cycles != FIT_UINT32_INVALID)
 		rb_hash_aset(rh, rb_str_new2("total_cycles"), UINT2NUM(mesg->total_cycles));
-	if(mesg->nec_lat != FIT_SINT32_INVALID)
-		rb_hash_aset(rh, rb_str_new2("nec_lat"), fit_pos_to_rb(mesg->nec_lat));
-	if(mesg->nec_long != FIT_SINT32_INVALID)
-		rb_hash_aset(rh, rb_str_new2("nec_long"), fit_pos_to_rb(mesg->nec_long));
-	if(mesg->swc_lat != FIT_SINT32_INVALID)
-		rb_hash_aset(rh, rb_str_new2("swc_lat"), fit_pos_to_rb(mesg->swc_lat));
-	if(mesg->swc_long != FIT_SINT32_INVALID)
-		rb_hash_aset(rh, rb_str_new2("swc_long"), fit_pos_to_rb(mesg->swc_long));
 	if(mesg->message_index != FIT_UINT16_INVALID)
 		rb_hash_aset(rh, rb_str_new2("message_index"), UINT2NUM(mesg->message_index));
 	if(mesg->total_calories != FIT_UINT16_INVALID)
@@ -201,7 +193,7 @@ static pass_lap(const FIT_LAP_MESG *mesg) {
 	rb_funcall(cFitHandler, cFitHandlerLapFun, 1, rh);
 }
 
-static pass_session(const FIT_SESSION_MESG *mesg) {
+static void pass_session(const FIT_SESSION_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
@@ -274,7 +266,7 @@ static pass_session(const FIT_SESSION_MESG *mesg) {
 	rb_funcall(cFitHandler, cFitHandlerSessionFun, 1, rh);
 }
 
-static pass_user_profile(const FIT_USER_PROFILE_MESG *mesg) {
+static void pass_user_profile(const FIT_USER_PROFILE_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
         if(mesg->friendly_name != FIT_STRING_INVALID)
@@ -319,7 +311,7 @@ static pass_user_profile(const FIT_USER_PROFILE_MESG *mesg) {
 	rb_funcall(cFitHandler, cFitHandlerUserProfileFun, 1, rh);
 }
 
-static pass_event(const FIT_EVENT_MESG *mesg) {
+static void pass_event(const FIT_EVENT_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
@@ -338,7 +330,7 @@ static pass_event(const FIT_EVENT_MESG *mesg) {
 	rb_funcall(cFitHandler, cFitHandlerEventFun, 1, rh);
 }
 
-static pass_device_info(const FIT_DEVICE_INFO_MESG *mesg) {
+static void pass_device_info(const FIT_DEVICE_INFO_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
@@ -365,7 +357,7 @@ static pass_device_info(const FIT_DEVICE_INFO_MESG *mesg) {
 	rb_funcall(cFitHandler, cFitHandlerDeviceInfoFun, 1, rh);
 }
 
-static pass_weight_scale_info(const FIT_WEIGHT_SCALE_MESG *mesg) {
+static void pass_weight_scale_info(const FIT_WEIGHT_SCALE_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
@@ -405,7 +397,6 @@ static VALUE parse(VALUE self, VALUE original_str) {
 	FIT_UINT8 buf[8];
 	FIT_CONVERT_RETURN convert_return = FIT_CONVERT_CONTINUE;
 	FIT_UINT32 buf_size;
-	FIT_UINT32 mesg_index = 0;
 #if defined(FIT_CONVERT_MULTI_THREAD)
 	FIT_CONVERT_STATE state;
 #endif
@@ -446,13 +437,10 @@ static VALUE parse(VALUE self, VALUE original_str) {
 					FIT_UINT16 mesg_num = FitConvert_GetMessageNumber();
 #endif
 
-					//sprintf(err_msg, "Mesg %d (%d) - ", mesg_index++, mesg_num);
 					//pass_message(err_msg);
 
 					switch(mesg_num) {
 						case FIT_MESG_NUM_FILE_ID: {
-							const FIT_FILE_ID_MESG *id = (FIT_FILE_ID_MESG *) mesg;
-							//sprintf(err_msg, "File ID: type=%u, number=%u\n", id->type, id->number);
 							//pass_message(err_msg);
 							break;
 						}
