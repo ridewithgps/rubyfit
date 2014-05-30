@@ -23,6 +23,7 @@ VALUE mRubyFit;
 VALUE cFitParser;
 VALUE cFitHandler;
 VALUE cFitHandlerPrintFun;
+VALUE cFitHandlerPrintErrFun;
 VALUE cFitHandlerActivityFun;
 VALUE cFitHandlerRecordFun;
 VALUE cFitHandlerLapFun;
@@ -45,6 +46,10 @@ void pass_message(char *msg) {
 	rb_funcall(cFitHandler, cFitHandlerPrintFun, 1, rb_str_new2(msg));
 }
 
+void pass_err_message(char *msg) {
+	rb_funcall(cFitHandler, cFitHandlerPrintErrFun, 1, rb_str_new2(msg));
+}
+
 static VALUE fit_pos_to_rb(FIT_SINT32 pos) {
 	float tmp = pos * (180.0 / pow(2,31));
 	tmp -= (tmp > 180.0 ? 360.0 : 0.0);
@@ -58,6 +63,7 @@ static VALUE init(VALUE self, VALUE handler) {
 
 	//callbacks
 	cFitHandlerPrintFun = rb_intern("print_msg");
+	cFitHandlerPrintErrFun = rb_intern("print_error_msg");
 	cFitHandlerActivityFun = rb_intern("on_activity");
 	cFitHandlerSessionFun = rb_intern("on_session");
 	cFitHandlerLapFun = rb_intern("on_lap");
@@ -347,7 +353,7 @@ static void pass_device_info(const FIT_DEVICE_INFO_MESG *mesg) {
 		rb_hash_aset(rh, rb_str_new2("battery_voltage"), UINT2NUM(mesg->battery_voltage));
 	if(mesg->device_index != FIT_DEVICE_INDEX_INVALID)
 		rb_hash_aset(rh, rb_str_new2("device_index"), UINT2NUM(mesg->device_index));
-	if(mesg->device_type != FIT_DEVICE_TYPE_INVALID)
+	if(mesg->device_type != FIT_ANTPLUS_DEVICE_TYPE_INVALID)
 		rb_hash_aset(rh, rb_str_new2("device_type"), UINT2NUM(mesg->device_type));
 	if(mesg->hardware_version != FIT_UINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("hardware_version"), UINT2NUM(mesg->hardware_version));
@@ -397,19 +403,11 @@ static VALUE parse(VALUE self, VALUE original_str) {
 	FIT_UINT8 buf[8];
 	FIT_CONVERT_RETURN convert_return = FIT_CONVERT_CONTINUE;
 	FIT_UINT32 buf_size;
-#if defined(FIT_CONVERT_MULTI_THREAD)
-	FIT_CONVERT_STATE state;
-#endif
-
-#if defined(FIT_CONVERT_MULTI_THREAD)
-	FitConvert_Init(&state, FIT_TRUE);
-#else
 	FitConvert_Init(FIT_TRUE);
-#endif
 
 	if(RSTRING_LEN(str) == 0) {
 		//sprintf(err_msg, "Passed in string with length of 0!");
-		pass_message(err_msg);
+		pass_err_message(err_msg);
 		return Qnil;
 	}
 
@@ -421,110 +419,77 @@ static VALUE parse(VALUE self, VALUE original_str) {
 		}
 
 		do {
-#if defined(FIT_CONVERT_MULTI_THREAD)
-			convert_return = FitConvert_Read(&state, buf, buf_size);
-#else
 			convert_return = FitConvert_Read(buf, buf_size);
-#endif
 
 			switch(convert_return) {
 				case FIT_CONVERT_MESSAGE_AVAILABLE: {
-#if defined(FIT_CONVERT_MULTI_THREAD)
-					const FIT_UINT8 *mesg = FitConvert_GetMessageData(&state);
-					FIT_UINT16 mesg_num = FitConvert_GetMessageNumber(&state);
-#else
 					const FIT_UINT8 *mesg = FitConvert_GetMessageData();
 					FIT_UINT16 mesg_num = FitConvert_GetMessageNumber();
-#endif
-
-					//pass_message(err_msg);
 
 					switch(mesg_num) {
 						case FIT_MESG_NUM_FILE_ID: {
-							//pass_message(err_msg);
 							break;
 						}
 
 						case FIT_MESG_NUM_USER_PROFILE: {
 							const FIT_USER_PROFILE_MESG *user_profile = (FIT_USER_PROFILE_MESG *) mesg;
-							//sprintf(err_msg, "User Profile: weight=%0.1fkg\n", user_profile->weight / 10.0f);
-							//pass_message(err_msg);
 							pass_user_profile(user_profile);
 							break;
 						}
 
 						case FIT_MESG_NUM_ACTIVITY: {
 							const FIT_ACTIVITY_MESG *activity = (FIT_ACTIVITY_MESG *) mesg;
-							//sprintf(err_msg, "Activity: timestamp=%u, type=%u, event=%u, event_type=%u, num_sessions=%u\n", activity->timestamp, activity->type, activity->event, activity->event_type, activity->num_sessions);
-							//pass_message(err_msg);
 							pass_activity(activity);
 
 							{
 								FIT_ACTIVITY_MESG old_mesg;
 								old_mesg.num_sessions = 1;
-#if defined(FIT_CONVERT_MULTI_THREAD)
-								FitConvert_RestoreFields(&state, &old_mesg);
-#else
 								FitConvert_RestoreFields(&old_mesg);
-#endif
-								//sprintf(err_msg, "Restored num_sessions=1 - Activity: timestamp=%u, type=%u, event=%u, event_type=%u, num_sessions=%u\n", activity->timestamp, activity->type, activity->event, activity->event_type, activity->num_sessions);
-								//pass_message(err_msg);
+								sprintf(err_msg, "Restored num_sessions=1 - Activity: timestamp=%u, type=%u, event=%u, event_type=%u, num_sessions=%u\n", activity->timestamp, activity->type, activity->event, activity->event_type, activity->num_sessions);
+								pass_message(err_msg);
 							}
 							break;
 						}
 
 						case FIT_MESG_NUM_SESSION: {
 							const FIT_SESSION_MESG *session = (FIT_SESSION_MESG *) mesg;
-							//sprintf(err_msg, "Session: timestamp=%u\n", session->timestamp);
-							//pass_message(err_msg);
 							pass_session(session);
 							break;
 						}
 
 						case FIT_MESG_NUM_LAP: {
 							const FIT_LAP_MESG *lap = (FIT_LAP_MESG *) mesg;
-							//sprintf(err_msg, "Lap: timestamp=%u, total_ascent=%u, total_distance=%f\n", lap->timestamp, lap->total_ascent, (lap->total_distance / 100.0) / 1000.0 * 0.621371192);
-							//pass_message(err_msg);
 							pass_lap(lap);
 							break;
 						}
 
 						case FIT_MESG_NUM_RECORD: {
 							const FIT_RECORD_MESG *record = (FIT_RECORD_MESG *) mesg;
-
-							//sprintf(err_msg, "Record: timestamp=%u", record->timestamp);
-							//pass_message(err_msg);
 							pass_record(record);
 							break;
 						}
 
 						case FIT_MESG_NUM_EVENT: {
 							const FIT_EVENT_MESG *event = (FIT_EVENT_MESG *) mesg;
-							//sprintf(err_msg, "Event: timestamp=%u, event_type = %i\n", event->timestamp, event->event_type);
-							//pass_message(err_msg);
 							pass_event(event);
 							break;
 						}
 
 						case FIT_MESG_NUM_DEVICE_INFO: {
 							const FIT_DEVICE_INFO_MESG *device_info = (FIT_DEVICE_INFO_MESG *) mesg;
-							//sprintf(err_msg, "Device Info: timestamp=%u, battery_status=%u\n", (unsigned int)device_info->timestamp, device_info->battery_voltage);
-							//pass_message(err_msg);
 							pass_device_info(device_info);
 							break;
 						}
 
 						case FIT_MESG_NUM_WEIGHT_SCALE: {
 							const FIT_WEIGHT_SCALE_MESG *weight_scale_info = (FIT_WEIGHT_SCALE_MESG *) mesg;
-							//sprintf(err_msg, "Device Info: timestamp=%u, battery_status=%u\n", (unsigned int)device_info->timestamp, device_info->battery_voltage);
-							//pass_message(err_msg);
 							pass_weight_scale_info(weight_scale_info);
 							break;
 						}
 
 						default: {
-							//sprintf(err_msg, "Unknown\n");
-							//pass_message(err_msg);
+							sprintf(err_msg, "Unknown message\n");
+							pass_message(err_msg);
 							break;
 						}
 					}
@@ -537,28 +502,25 @@ static VALUE parse(VALUE self, VALUE original_str) {
 	}
 
 	if (convert_return == FIT_CONVERT_ERROR) {
-		//sprintf(err_msg, "Error decoding file.\n");
-		pass_message(err_msg);
-		//fclose(file);
+		sprintf(err_msg, "Error decoding file.\n");
+		pass_err_message(err_msg);
 		return Qnil;
 	}
 
 	if (convert_return == FIT_CONVERT_CONTINUE) {
-		//sprintf(err_msg, "Unexpected end of file.\n");
-		//pass_message(err_msg);
-		//fclose(file);
-		//return Qnil;
+		sprintf(err_msg, "Unexpected end of file.\n");
+		pass_err_message(err_msg);
+		return Qnil;
 	}
 
 	if (convert_return == FIT_CONVERT_PROTOCOL_VERSION_NOT_SUPPORTED) {
-		//sprintf(err_msg, "Protocol version not supported.\n");
-		pass_message(err_msg);
-		//fclose(file);
+		sprintf(err_msg, "Protocol version not supported.\n");
+		pass_err_message(err_msg);
 		return Qnil;
 	}
 
 	if (convert_return == FIT_CONVERT_END_OF_FILE) {
-		//sprintf(err_msg, "File converted successfully.\n");
+		sprintf(err_msg, "File converted successfully.\n");
 		pass_message(err_msg);
 	}
 
