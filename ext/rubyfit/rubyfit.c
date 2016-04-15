@@ -131,6 +131,19 @@ static void pass_record(const FIT_RECORD_MESG *mesg) {
 	if(mesg->temperature != FIT_SINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("temperature"), INT2FIX(mesg->temperature));
 
+	if(mesg->left_right_balance != FIT_UINT8_INVALID)
+		rb_hash_aset(rh, rb_str_new2("left_right_balance"), UINT2NUM(mesg->left_right_balance & FIT_LEFT_RIGHT_BALANCE_MASK));
+	if(mesg->left_torque_effectiveness != FIT_UINT8_INVALID)
+		rb_hash_aset(rh, rb_str_new2("left_torque_effectiveness"), UINT2NUM(mesg->left_torque_effectiveness));
+	if(mesg->right_torque_effectiveness != FIT_UINT8_INVALID)
+		rb_hash_aset(rh, rb_str_new2("right_torque_effectiveness"), UINT2NUM(mesg->right_torque_effectiveness));
+	if(mesg->left_pedal_smoothness != FIT_UINT8_INVALID)
+		rb_hash_aset(rh, rb_str_new2("left_pedal_smoothness"), UINT2NUM(mesg->left_pedal_smoothness));
+	if(mesg->right_pedal_smoothness != FIT_UINT8_INVALID)
+		rb_hash_aset(rh, rb_str_new2("right_pedal_smoothness"), UINT2NUM(mesg->right_pedal_smoothness));
+	if(mesg->combined_pedal_smoothness != FIT_UINT8_INVALID)
+		rb_hash_aset(rh, rb_str_new2("combined_pedal_smoothness"), UINT2NUM(mesg->combined_pedal_smoothness));
+
 	rb_funcall(cFitHandler, cFitHandlerRecordFun, 1, rh);
 }
 
