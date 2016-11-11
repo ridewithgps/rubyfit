@@ -18,8 +18,8 @@
 
 
 #include "string.h"
-#include "fit_product.h"
-#include "fit_include.h"
+#include "fit_config.h"
+#include "fit_example.h"
 
 
 ///////////////////////////////////////////////////////////////////////

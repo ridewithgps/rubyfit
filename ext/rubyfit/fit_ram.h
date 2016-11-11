@@ -20,7 +20,7 @@
 #if !defined(FIT_RAM_H)
 #define FIT_RAM_H
 
-#include "fit_product.h"
+#include "fit_example.h"
 
 #if defined(FIT_RAM_INCLUDE)
 
