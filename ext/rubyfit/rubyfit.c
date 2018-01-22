@@ -5,17 +5,14 @@
 #include "ruby.h"
 #include "math.h"
 
-VALUE mRubyFit;
-VALUE cFitParser;
-VALUE cFitWriter;
 
 #include "rf_parser.h"
 #include "rf_writer.h"
 
 void Init_rubyfit() {
-    mRubyFit = rb_define_module("RubyFit");
-    cFitParser = rb_define_class_under(mRubyFit, "FitParser", rb_cObject);
-//    cFitWriter = rb_define_class_under(mRubyFit, "FitWriter", rb_cObject);
+    VALUE mRubyFit = rb_define_module("RubyFit");
+    VALUE cFitParser = rb_define_class_under(mRubyFit, "FitParser", rb_cObject);
+//  VALUE cFitWriter = rb_define_class_under(mRubyFit, "FitWriter", rb_cObject);
 
     rf_parser_define(cFitParser);
 
