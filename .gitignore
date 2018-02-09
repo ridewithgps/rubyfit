@@ -5,3 +5,5 @@ pkg/*
 Makefile
 *.so
 *.swp
+tmp/
+lib/rubyfit/rubyfit.bundle
