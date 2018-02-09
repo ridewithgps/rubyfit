@@ -11,6 +11,11 @@ Gem::Specification.new do |s|
   s.description = %q{FIT files are binary, and as a result, are a pain to parse.  This is a wrapper around the FIT SDK, which makes creating a stream based parser simple.}
 
   s.rubyforge_project = "rubyfit"
+  
+  s.add_development_dependency "rspec", ">= 2.13.0"
+  s.add_development_dependency "rake", ">= 1.9.1"
+  s.add_development_dependency "rake-compiler", ">= 0.8.3"
+  s.add_development_dependency "awesome_print"
 
   #s.files         = `git ls-files`.split("\n")
   s.files = Dir.glob('lib/**/*.rb') + Dir.glob('ext/**/*.{c,h,rb}')

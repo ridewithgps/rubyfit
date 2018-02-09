@@ -1,22 +1,16 @@
-
-
 #include "stdio.h"
 #include "string.h"
 #include "ruby.h"
 #include "math.h"
 
-
 #include "rf_parser.h"
-#include "rf_writer.h"
+#include "rf_crc.h"
 
 void Init_rubyfit() {
-    VALUE mRubyFit = rb_define_module("RubyFit");
-    VALUE cFitParser = rb_define_class_under(mRubyFit, "FitParser", rb_cObject);
-//  VALUE cFitWriter = rb_define_class_under(mRubyFit, "FitWriter", rb_cObject);
+    VALUE ruby_fit_module = rb_define_module("RubyFit");
 
-    rf_parser_define(cFitParser);
+    VALUE fit_parser_class = rb_define_class_under(ruby_fit_module, "FitParser", rb_cObject);
+    rf_parser_define(fit_parser_class);
 
-//	rb_define_method(cFitWriter, "initialize", writer_init, 1);
-//	rb_define_method(cFitWriter, "writeHeader", writer_write_header, 1);
-
+    rf_crc_define(ruby_fit_module);
 }

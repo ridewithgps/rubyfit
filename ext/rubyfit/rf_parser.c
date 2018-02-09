@@ -1,5 +1,3 @@
-
-
 #include "rf_parser.h"
 #include "fit_convert.h"
 
@@ -9,7 +7,7 @@
  * to their number to get the true number of seconds since the epoch.
  * This is 20 years of seconds.
  */
-const long GARMIN_TIME_OFFSET = 631065600;
+#define GARMIN_TIME_OFFSET (631065600)
 
 ID HANDLER_ATTR;
 
