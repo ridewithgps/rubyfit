@@ -2,21 +2,29 @@ class FitCallbacks
   def initialize()
   end
 
+  def print_error_msg(msg)
+    puts "E: #{msg}"
+  end
+  
+  def print_msg(msg)
+    puts "I: #{msg}"
+  end
+
   def on_activity(msg)
-    #puts "activity: #{msg.inspect}"
+    puts "activity: #{msg.inspect}"
   end
 
   def on_lap(msg)
-    #puts "lap: #{msg.inspect}"
+    puts "lap: #{msg.inspect}"
   end
 
   #what is a session?  seems to be another way of saying activity...
   def on_session(msg)
-    #puts "session: #{msg.inspect}"
+    puts "session: #{msg.inspect}"
   end
 
   def on_record(msg)
-    #puts "record: #{msg.inspect}"
+    puts "record: #{msg.inspect}"
     cp = {}
     if msg['position_lat'] and msg['position_long']
       cp[:y] = ("%0.6f" % msg['position_lat']).to_f
@@ -33,18 +41,18 @@ class FitCallbacks
   end
 
   def on_event(msg)
-    #puts "event: #{msg.inspect}"
+    puts "event: #{msg.inspect}"
   end
 
   def on_device_info(msg)
-    #puts "device info: #{msg.inspect}"
+    puts "device info: #{msg.inspect}"
   end
 
   def on_user_profile(msg)
-    #puts "user profile: #{msg.inspect}"
+    puts "user profile: #{msg.inspect}"
   end
 
   def on_weight_scale_info(msg)
-    #puts "weight scale info: #{msg.inspect}"
+    puts "weight scale info: #{msg.inspect}"
   end
 end
