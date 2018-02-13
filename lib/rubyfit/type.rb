@@ -144,5 +144,12 @@ class RubyFit::Type
         fit2rb: ->(val, type) { val / 100.0 }
       })
     end
+
+    def altitude
+      uint16({
+        rb2fit: ->(val, type) { (val + 500).truncate },
+        fit2rb: ->(val, type) { val - 500 }
+      })
+    end
   end
 end

@@ -6,11 +6,11 @@ describe RubyFit::Writer do
 
   let(:track_points) {
     [
-      {x: -122.64424, y: 45.5279, distance: 0},
-      {x: -122.64355, y: 45.5279, distance: 53.81},
-      {x: -122.64343, y: 45.52791, distance: 63.234},
-      {x: -122.64342, y: 45.52858, distance: 137.822},
-      {x: -122.64251, y: 45.52858, distance: 208.788}
+      {x: -122.64424, y: 45.5279, distance: 0, elevation: 100.0},
+      {x: -122.64355, y: 45.5279, distance: 53.81, elevation: 110.1},
+      {x: -122.64343, y: 45.52791, distance: 63.234, elevation: 120.2},
+      {x: -122.64342, y: 45.52858, distance: 137.822, elevation: 109.3},
+      {x: -122.64251, y: 45.52858, distance: 208.788, elevation: 122.4}
     ]
   }
 
@@ -73,6 +73,10 @@ describe RubyFit::Writer do
 
     def distance_bytes(dist)
       num2bytes((dist * 100).truncate, 4)
+    end
+
+    def altitude_bytes(meters)
+      num2bytes((meters + 500).truncate, 2)
     end
 
     bytes = stream.string.unpack("C*")
@@ -210,12 +214,13 @@ describe RubyFit::Writer do
       0, # Padding
       1, # Big endian
       0, 20, # Global message number
-      4, # Field count
+      5, # Field count
       # Fields are 3 bytes each - field ID, size in bytes, type ID
       253, 4, 134, # timestamp
       0, 4, 133, # position lat
       1, 4, 133, # position long
       5, 4, 134, # distance
+      2, 2, 132, # altitude
     ]
     expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
     
@@ -230,11 +235,13 @@ describe RubyFit::Writer do
         *position_bytes(data[:y]), # lat
         *position_bytes(data[:x]), # lng
         *distance_bytes(distance), # distance
+        *altitude_bytes(data[:elevation]), # distance
       ]
+      
       expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
     end
     
-    expected_bytes = num2bytes(0x5CCD, 2, false) # CRC (little endian)
+    expected_bytes = num2bytes(0x14BB, 2, false) # CRC (little endian)
     expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
 
     expect(bytes.count).to eq(0)

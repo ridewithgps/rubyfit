@@ -84,7 +84,8 @@ class RubyFit::MessageWriter
         timestamp: { id: 253, type: RubyFit::Type.timestamp, required: true },
         y: { id: 0, type: RubyFit::Type.semicircles, required: true },
         x: { id: 1, type: RubyFit::Type.semicircles, required: true },
-        distance: { id: 5, type: RubyFit::Type.centimeters }
+        distance: { id: 5, type: RubyFit::Type.centimeters },
+        elevation: { id: 2, type: RubyFit::Type.altitude },
       }
     }
   }

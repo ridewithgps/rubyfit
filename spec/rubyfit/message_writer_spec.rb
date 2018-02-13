@@ -126,12 +126,13 @@ describe RubyFit::MessageWriter do
         0, # Padding
         1, # Big endian
         0, 20, # Global message number
-        4, # Field count
+        5, # Field count
         # Fields are 3 bytes each - field ID, size in bytes, type ID
         253, 4, 134, # timestamp
         0, 4, 133, # position lat
         1, 4, 133, # position long
         5, 4, 134, # distance
+        2, 2, 132, # elevation
       ]
       expect(bytes).to eq(expected_bytes)
     end
@@ -298,7 +299,7 @@ describe RubyFit::MessageWriter do
     end
 
     it "returns the correct value for :record" do 
-      expect(described_class.definition_message_size(:record)).to eq(6 + 4*3)
+      expect(described_class.definition_message_size(:record)).to eq(6 + 5*3)
     end
   end
 
@@ -320,7 +321,7 @@ describe RubyFit::MessageWriter do
     end
 
     it "returns the correct value for :record" do 
-      expect(described_class.data_message_size(:record)).to eq(17)
+      expect(described_class.data_message_size(:record)).to eq(19)
     end
   end
 end
