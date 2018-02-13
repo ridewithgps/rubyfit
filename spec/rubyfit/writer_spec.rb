@@ -59,6 +59,10 @@ describe RubyFit::Writer do
       end
     end
 
+    File.open("test.fit", "w") do |f|
+      f.write(stream.string)
+    end
+
     def timestamp_bytes(timestamp)
       num2bytes(timestamp - RubyFit::Helpers::GARMIN_TIME_OFFSET, 4)
     end
@@ -83,7 +87,7 @@ describe RubyFit::Writer do
       *num2bytes(RubyFit::MessageWriter::FIT_PROFILE_VERSION, 2, false), # Profile version (little endian)
       *num2bytes(data_size, 4, false), # Data size (little endian)
       *".FIT".unpack("C*"), # Data type human readable string
-      *num2bytes(0xCE48, 2, false) # Header CRC (little endian)
+      *num2bytes(0x0000, 2, false) # Header CRC (little endian) (zero)
     ]
     expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
 
@@ -116,7 +120,7 @@ describe RubyFit::Writer do
 
     # course definition message
     expected_bytes = [
-      0x40, # Definition message, local number 0
+      0x41, # Definition message, local number 1
       0, # Padding
       1, # Big endian
       0, 31, # Global message number
@@ -128,14 +132,14 @@ describe RubyFit::Writer do
 
     # course data message
     expected_bytes = [
-      0, # Data message, local number 0
+      1, # Data message, local number 1
       *"test course".unpack("C*"), 0, 0, 0, 0, 0, # Course name and filler zeros
     ]
     expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
 
     # lap definition message
     expected_bytes = [
-      0x40, # Definition message, local number 0
+      0x42, # Definition message, local number 1
       0, # Padding
       1, # Big endian
       0, 19, # Global message number
@@ -153,7 +157,7 @@ describe RubyFit::Writer do
 
     # lap data message
     expected_bytes = [
-      0, # Data message, local number 0
+      2, # Data message, local number 2
       *timestamp_bytes(end_time), # timestamp (end time),
       *timestamp_bytes(start_time), # start time
       *position_bytes(track_points.first[:y]), # start lat
@@ -166,7 +170,7 @@ describe RubyFit::Writer do
 
     # course point definition message
     expected_bytes = [
-      0x40, # Definition message, local number 0
+      0x43, # Definition message, local number 3
       0, # Padding
       1, # Big endian
       0, 32, # Global message number
@@ -188,7 +192,7 @@ describe RubyFit::Writer do
 
       # course point data message
       expected_bytes = [
-        0, # Data message, local number 0
+        3, # Data message, local number 3
         *timestamp_bytes(timestamp), # timestamp
         *position_bytes(data[:y]), # lat
         *position_bytes(data[:x]), # lng
@@ -202,7 +206,7 @@ describe RubyFit::Writer do
 
     # record definition message
     expected_bytes = [
-      0x40, # Definition message, local number 0
+      0x44, # Definition message, local number 4
       0, # Padding
       1, # Big endian
       0, 20, # Global message number
@@ -221,7 +225,7 @@ describe RubyFit::Writer do
 
       # record data message
       expected_bytes = [
-        0, # Data message, local number 0
+        4, # Data message, local number 4
         *timestamp_bytes(timestamp), # timestamp
         *position_bytes(data[:y]), # lat
         *position_bytes(data[:x]), # lng
@@ -230,7 +234,7 @@ describe RubyFit::Writer do
       expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
     end
     
-    expected_bytes = num2bytes(0xC8F1, 2, false) # CRC (little endian)
+    expected_bytes = num2bytes(0x5CCD, 2, false) # CRC (little endian)
     expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
 
     expect(bytes.count).to eq(0)

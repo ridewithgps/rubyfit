@@ -29,7 +29,7 @@ describe RubyFit::MessageWriter do
         *num2bytes(RubyFit::MessageWriter::FIT_PROFILE_VERSION, 2, false), # Profile version (little endian)
         *num2bytes(data_size, 4, false), # Data size (little endian)
         *".FIT".unpack("C*"), # Data type human readable string
-        *num2bytes(0x3C37, 2, false) # CRC (little endian)
+        *num2bytes(0x0000, 2, false) # CRC (optional zero) (little endian)
       ]
       expect(header_bytes.unpack("C*")).to eq(expected_bytes)
     end
@@ -45,7 +45,7 @@ describe RubyFit::MessageWriter do
 
   describe ".definition_message" do
     it "creates a valid file_id definition message" do 
-      message_bytes = described_class.definition_message(:file_id)
+      message_bytes = described_class.definition_message(:file_id, 0)
       expected_bytes = [
         make_message_header(definition: true, local_number: 0),
         0, # Padding
@@ -63,7 +63,7 @@ describe RubyFit::MessageWriter do
     end
 
     it "creates a valid course definition message" do 
-      message_bytes = described_class.definition_message(:course)
+      message_bytes = described_class.definition_message(:course, 0)
       expected_bytes = [
         make_message_header(definition: true, local_number: 0),
         0, # Padding
@@ -77,7 +77,7 @@ describe RubyFit::MessageWriter do
     end
 
     it "creates a valid lap definition message" do 
-      message_bytes = described_class.definition_message(:lap)
+      message_bytes = described_class.definition_message(:lap, 0)
       bytes = message_bytes.unpack("C*")
       expected_bytes = [
         make_message_header(definition: true, local_number: 0),
@@ -98,7 +98,7 @@ describe RubyFit::MessageWriter do
     end
 
     it "creates a valid course_point definition message" do 
-      message_bytes = described_class.definition_message(:course_point)
+      message_bytes = described_class.definition_message(:course_point, 0)
       bytes = message_bytes.unpack("C*")
       expected_bytes = [
         make_message_header(definition: true, local_number: 0),
@@ -119,7 +119,7 @@ describe RubyFit::MessageWriter do
     end
 
     it "creates a valid record definition message" do 
-      message_bytes = described_class.definition_message(:record)
+      message_bytes = described_class.definition_message(:record, 0)
       bytes = message_bytes.unpack("C*")
       expected_bytes = [
         make_message_header(definition: true, local_number: 0),
@@ -148,7 +148,7 @@ describe RubyFit::MessageWriter do
         product: 0,
         serial_number: 0,
       }
-      message_bytes = described_class.data_message(:file_id, values)
+      message_bytes = described_class.data_message(:file_id, 0, values)
       bytes = message_bytes.unpack("C*")
       expect(bytes.shift(1)).to eq([make_message_header(local_number: 0)]) # Header
       expect(bytes.shift(4)).to eq(num2bytes(0, 4)) # Serial number
@@ -167,13 +167,13 @@ describe RubyFit::MessageWriter do
       end
 
       it "creates a valid message" do 
-        message_bytes = described_class.data_message(:course, name: "foo")
+        message_bytes = described_class.data_message(:course, 0, name: "foo")
         bytes = message_bytes.unpack("C*")
         test_result(bytes, "foo")
       end
 
       it "truncates names longer than 15 characters" do 
-        message_bytes = described_class.data_message(:course, name: "1234567890abcdefghij")
+        message_bytes = described_class.data_message(:course, 0, name: "1234567890abcdefghij")
         bytes = message_bytes.unpack("C*")
         test_result(bytes, "1234567890abcde")
       end
@@ -195,7 +195,7 @@ describe RubyFit::MessageWriter do
         timestamp: end_time,
         total_distance: distance
       }
-      message_bytes = described_class.data_message(:lap, values )
+      message_bytes = described_class.data_message(:lap, 0, values )
       bytes = message_bytes.unpack("C*")
       expect(bytes.shift(1)).to eq([make_message_header(local_number: 0)]) # Header
       expect(bytes.shift(4)).to eq(expected_fit_end_time) # timestamp (end time)
@@ -234,7 +234,7 @@ describe RubyFit::MessageWriter do
           name: "foobar"
         }
 
-        message_bytes = described_class.data_message(:course_point, opts)
+        message_bytes = described_class.data_message(:course_point, 0, opts)
         bytes = message_bytes.unpack("C*")
         test_result(bytes, opts)
       end
@@ -249,7 +249,7 @@ describe RubyFit::MessageWriter do
           name: "foobar"
         }
 
-        message_bytes = described_class.data_message(:course_point, opts)
+        message_bytes = described_class.data_message(:course_point, 0, opts)
         bytes = message_bytes.unpack("C*")
         test_result(bytes, opts)
       end
@@ -270,7 +270,7 @@ describe RubyFit::MessageWriter do
         x: x,
         distance: distance
       }
-      message_bytes = described_class.data_message(:record, values )
+      message_bytes = described_class.data_message(:record, 0, values )
       bytes = message_bytes.unpack("C*")
       expect(bytes.shift(1)).to eq([make_message_header(local_number: 0)]) # Header
       expect(bytes.shift(4)).to eq(expected_timestamp) # timestamp

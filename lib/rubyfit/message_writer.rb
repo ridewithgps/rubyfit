@@ -4,8 +4,8 @@ require "rubyfit/helpers"
 class RubyFit::MessageWriter
   extend RubyFit::Helpers
 
-  FIT_PROTOCOL_VERSION = 0x20 # major 2, minor 0
-  FIT_PROFILE_VERSION = 20 * 100 + 54 # major 20, minor 54
+  FIT_PROTOCOL_VERSION = 0x10 # major 1, minor 0
+  FIT_PROFILE_VERSION = 1 * 100 + 52 # major 1, minor 52
 
   COURSE_POINT_TYPE = {
     invalid: 255,
@@ -89,10 +89,10 @@ class RubyFit::MessageWriter
     }
   }
 
-  def self.definition_message(type)
+  def self.definition_message(type, local_num)
     pack_bytes do |bytes|
       message_data = MESSAGE_DEFINITIONS[type]
-      bytes << 0x40 # Definition header, local message type 0
+      bytes << header_byte(local_num, true)
       bytes << 0x00 # Reserved uint8
       bytes << 0x01 # Big endian
       bytes.push(*num2bytes(message_data[:id], 2)) # Global message ID
@@ -107,10 +107,10 @@ class RubyFit::MessageWriter
     end
   end
 
-  def self.data_message(type, values)
+  def self.data_message(type, local_num, values)
     pack_bytes do |bytes|
       message_data = MESSAGE_DEFINITIONS[type]
-      bytes << 0x00 # Data header, local message type 0
+      bytes << header_byte(local_num, false)
       message_data[:fields].each do |field, info|
         field_type = info[:type]
         value = values[field]
@@ -150,7 +150,7 @@ class RubyFit::MessageWriter
       bytes.push(*num2bytes(FIT_PROFILE_VERSION, 2).reverse) # Profile version (little endian)
       bytes.push(*num2bytes(data_byte_count, 4).reverse) # Data size (little endian)
       bytes.push(*str2bytes(".FIT", 5).take(4)) # Data Type ASCII, no terminator
-      crc = RubyFit::CRC.update_crc(0, bytes2str(bytes))
+      crc = 0 #RubyFit::CRC.update_crc(0, bytes2str(bytes))
       bytes.push(*num2bytes(crc, 2).reverse) # Header CRC (little endian)
     end
   end
@@ -162,6 +162,10 @@ class RubyFit::MessageWriter
   end
 
   # Internal
+  
+  def self.header_byte(local_number, definition)
+    local_number & 0xF | (definition ? 0x40 : 0x00)
+  end
   
   def self.pack_bytes
     bytes = []

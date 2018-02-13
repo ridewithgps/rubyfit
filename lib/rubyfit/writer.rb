@@ -4,6 +4,7 @@ class RubyFit::Writer
   def write(stream, opts = {})
     raise "Can't start write mode from #{@state}" if @state
     @state = :write
+    @local_nums = []
 
     @stream = stream
 
@@ -93,16 +94,25 @@ class RubyFit::Writer
   protected
   
   def write_definition_message(type)
-    write_data(RubyFit::MessageWriter.definition_message(type))
+    write_data(RubyFit::MessageWriter.definition_message(type, local_num(type)))
   end
 
   def write_data_message(type, values)
-    write_data(RubyFit::MessageWriter.data_message(type, values))
+    write_data(RubyFit::MessageWriter.data_message(type, local_num(type), values))
   end
 
   def write_data(data)
     @stream.write(data)
     prev = @data_crc
     @data_crc = RubyFit::CRC.update_crc(@data_crc, data)
+  end
+
+  def local_num(type)
+    result = @local_nums.index(type)
+    unless result
+      result = @local_nums.size
+      @local_nums << type
+    end
+    result
   end
 end

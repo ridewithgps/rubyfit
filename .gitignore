@@ -7,3 +7,4 @@ Makefile
 *.swp
 tmp/
 lib/rubyfit/rubyfit.bundle
+*.fit
