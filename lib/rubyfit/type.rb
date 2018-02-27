@@ -151,5 +151,12 @@ class RubyFit::Type
         fit2rb: ->(val, type) { val - 500 }
       })
     end
+
+    def duration
+      uint32({
+        rb2fit: ->(val, type) { (val * 1000).truncate },
+        fit2rb: ->(val, type) { val / 1000.0 }
+      })
+    end
   end
 end

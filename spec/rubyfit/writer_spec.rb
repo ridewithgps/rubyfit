@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'date'
+require 'json'
 
 describe RubyFit::Writer do
   include RubyFit::Helpers
@@ -26,13 +27,14 @@ describe RubyFit::Writer do
   it "writes a valid FIT file given realistic data" do
     writer = described_class.new
     stream = StringIO.new
-    end_time = DateTime.new(2018, 1, 1, 12, 0, 0).to_time.to_i
-    start_time = end_time - 3600
+    start_time = DateTime.new(2018, 1, 1, 12, 0, 0).to_time.to_i
+    duration = 3600
+    end_time = start_time + duration
 
     opts = {
-      time_created: end_time,
+      time_created: start_time,
       start_time: start_time,
-      end_time: end_time,
+      duration: duration,
       start_x: track_points.first[:x],
       start_y: track_points.first[:y],
       end_x: track_points.last[:x],
@@ -43,7 +45,7 @@ describe RubyFit::Writer do
       course_point_count: course_points.size,
     }
     
-    dist2timestamp = ->(dist) { (start_time + 3600 * (dist / total_distance)).to_i }
+    dist2timestamp = ->(dist) { (start_time + duration * (dist / total_distance)).to_i }
 
     writer.write(stream, opts) do
       writer.course_points do
@@ -79,8 +81,16 @@ describe RubyFit::Writer do
       num2bytes((meters + 500).truncate, 2)
     end
 
+    def duration_bytes(seconds)
+      num2bytes((seconds * 1000).truncate, 4)
+    end
+
+    # Grab the CRC to compare at the end
+    expected_crc = RubyFit::CRC.update_crc(0, stream.string[0...-2])
+
     bytes = stream.string.unpack("C*")
 
+    bytes = stream.string.unpack("C*")
     data_size = bytes2num(bytes.slice(4, 4), 4, true, false)
     expect(data_size).to eq(bytes.count - 16)
 
@@ -115,9 +125,9 @@ describe RubyFit::Writer do
     expected_bytes = [
       0, # Data message, local number 0
       0, 0, 0, 0, # Serial number
-      *timestamp_bytes(end_time), # Time created
+      *timestamp_bytes(start_time), # Time created
       0, 1, # Manufacturer (garmin)
-      0, 0, # Product
+      *num2bytes(RubyFit::Writer::PRODUCT_ID, 2), # Product
       6, # Type (course file)
     ]
     expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
@@ -147,10 +157,12 @@ describe RubyFit::Writer do
       0, # Padding
       1, # Big endian
       0, 19, # Global message number
-      7, # Field count
+      9, # Field count
       # Fields are 3 bytes each - field ID, size in bytes, type ID
       253, 4, 134, # timestamp
       2, 4, 134, # start time
+      7, 4, 134, # total elapsed time
+      8, 4, 134, # total timer time
       3, 4, 133, # start position lat
       4, 4, 133, # start position long
       5, 4, 133, # end position lat
@@ -162,8 +174,10 @@ describe RubyFit::Writer do
     # lap data message
     expected_bytes = [
       2, # Data message, local number 2
-      *timestamp_bytes(end_time), # timestamp (end time),
+      *timestamp_bytes(start_time), # timestamp,
       *timestamp_bytes(start_time), # start time
+      *duration_bytes(duration), # total elapsed time
+      *duration_bytes(duration), # total timer time
       *position_bytes(track_points.first[:y]), # start lat
       *position_bytes(track_points.first[:x]), # start lng
       *position_bytes(track_points.last[:y]), # end lat
@@ -172,9 +186,34 @@ describe RubyFit::Writer do
     ]
     expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
 
+    # event definition message
+    expected_bytes = [
+      0x43, # Definition message, local number 4
+      0, # Padding
+      1, # Big endian
+      0, 21, # Global message number
+      4, # Field count
+      # Fields are 3 bytes each - field ID, size in bytes, type ID
+      253, 4, 134, # timestamp
+      0, 1, 0, # event enum
+      1, 1, 0, # event_type enum
+      4, 1, 2, # event_group
+    ]
+    expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
+
+    # event data message: timer start
+    expected_bytes = [
+      0x03, # data message, local number 3
+      *timestamp_bytes(start_time), # timestamp
+      *num2bytes(0, 1), # event (timer)
+      *num2bytes(0, 1), # event_type (start)
+      *num2bytes(0, 1), # event_group
+    ] 
+    expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
+
     # course point definition message
     expected_bytes = [
-      0x43, # Definition message, local number 3
+      0x44, # Definition message, local number 4
       0, # Padding
       1, # Big endian
       0, 32, # Global message number
@@ -196,21 +235,21 @@ describe RubyFit::Writer do
 
       # course point data message
       expected_bytes = [
-        3, # Data message, local number 3
+        4, # Data message, local number 4
         *timestamp_bytes(timestamp), # timestamp
         *position_bytes(data[:y]), # lat
         *position_bytes(data[:x]), # lng
         *distance_bytes(distance), # distance
         *str2bytes(data[:name], 16), # name
         255, 255, # message index, invalid
-        RubyFit::MessageWriter::COURSE_POINT_TYPE[data[:type]], # type
+        RubyFit::MessageConstants::COURSE_POINT_TYPE[data[:type]], # type
       ]
       expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
     end
 
     # record definition message
     expected_bytes = [
-      0x44, # Definition message, local number 4
+      0x45, # Definition message, local number 5
       0, # Padding
       1, # Big endian
       0, 20, # Global message number
@@ -230,7 +269,7 @@ describe RubyFit::Writer do
 
       # record data message
       expected_bytes = [
-        4, # Data message, local number 4
+        5, # Data message, local number 5
         *timestamp_bytes(timestamp), # timestamp
         *position_bytes(data[:y]), # lat
         *position_bytes(data[:x]), # lng
@@ -241,9 +280,55 @@ describe RubyFit::Writer do
       expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
     end
     
-    expected_bytes = num2bytes(0x14BB, 2, false) # CRC (little endian)
+    # event data message: timer stop
+    expected_bytes = [
+      0x03, # data message, local number 3
+      *timestamp_bytes(end_time), # timestamp
+      *num2bytes(0, 1), # event (timer)
+      *num2bytes(9, 1), # event_type (all stop)
+      *num2bytes(0, 1), # event_group
+    ] 
+
+    expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
+
+    expected_bytes = num2bytes(expected_crc, 2, false) # CRC (little endian)
     expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
 
     expect(bytes.count).to eq(0)
+  end
+
+  it "writes real data to a fit file" do
+    writer = described_class.new
+    stream = File.open("drummond.fit", "w")
+
+    def deep_symbolize_keys(obj)
+      case obj
+      when Hash
+        obj.map{ |key, val| [key.to_sym, deep_symbolize_keys(val)] }.to_h
+      when Array
+        obj.map{ |val| deep_symbolize_keys(val) }
+      else
+        obj
+      end
+    end
+    json_data = File.read("spec/fixtures/drummond.json")
+    data = deep_symbolize_keys(JSON.parse(json_data))
+
+    writer.write(stream, data[:opts]) do
+      writer.course_points do
+        data[:course_points].each do |course_point|
+          course_point[:type] = course_point[:type].to_sym
+          writer.course_point(course_point)
+        end
+      end
+
+      writer.track_points do
+        data[:track_points].each do |track_point|
+          writer.track_point(track_point)
+        end
+      end
+    end
+
+    stream.close
   end
 end

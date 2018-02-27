@@ -84,10 +84,12 @@ describe RubyFit::MessageWriter do
         0, # Padding
         1, # Big endian
         0, 19, # Global message number
-        7, # Field count
+        9, # Field count
         # Fields are 3 bytes each - field ID, size in bytes, type ID
         253, 4, 134, # timestamp
         2, 4, 134, # start time
+        7, 4, 134, # total elapsed time
+        8, 4, 134, # total timer time
         3, 4, 133, # start position lat
         4, 4, 133, # start position long
         5, 4, 133, # end position lat
@@ -133,6 +135,24 @@ describe RubyFit::MessageWriter do
         1, 4, 133, # position long
         5, 4, 134, # distance
         2, 2, 132, # elevation
+      ]
+      expect(bytes).to eq(expected_bytes)
+    end
+
+    it "creates a valid event definition message" do 
+      message_bytes = described_class.definition_message(:event, 0)
+      bytes = message_bytes.unpack("C*")
+      expected_bytes = [
+        make_message_header(definition: true, local_number: 0),
+        0, # Padding
+        1, # Big endian
+        0, 21, # Global message number
+        4, # Field count
+        # Fields are 3 bytes each - field ID, size in bytes, type ID
+        253, 4, 134, # timestamp
+        0, 1, 0, # event enum
+        1, 1, 0, # event_type enum
+        4, 1, 2, # event_group
       ]
       expect(bytes).to eq(expected_bytes)
     end
@@ -182,18 +202,23 @@ describe RubyFit::MessageWriter do
 
     it "creates a valid lap data message" do 
       start_time = Time.now.to_i
-      end_time = start_time + 3600
+      duration = 3600
+      end_time = start_time + duration
       distance = 12345.6789
 
       expected_fit_start_time = num2bytes(start_time - RubyFit::Helpers::GARMIN_TIME_OFFSET, 4)
       expected_fit_end_time = num2bytes(end_time - RubyFit::Helpers::GARMIN_TIME_OFFSET, 4)
-      expected_fit_distance = (distance * 100).truncate
+      expected_fit_distance = num2bytes((distance * 100).truncate, 4)
+      expected_fit_elapsed_time = num2bytes(duration * 1000, 4)
+      expected_fit_timer_time = num2bytes(duration * 1000, 4)
 
       invalid_position = num2bytes(2**31 - 1, 4)
 
       values = {
         start_time: start_time,
         timestamp: end_time,
+        total_elapsed_time: duration,
+        total_timer_time: duration,
         total_distance: distance
       }
       message_bytes = described_class.data_message(:lap, 0, values )
@@ -201,11 +226,13 @@ describe RubyFit::MessageWriter do
       expect(bytes.shift(1)).to eq([make_message_header(local_number: 0)]) # Header
       expect(bytes.shift(4)).to eq(expected_fit_end_time) # timestamp (end time)
       expect(bytes.shift(4)).to eq(expected_fit_start_time) # start time
+      expect(bytes.shift(4)).to eq(expected_fit_elapsed_time) # elapsed time
+      expect(bytes.shift(4)).to eq(expected_fit_timer_time) # timer time
       expect(bytes.shift(4)).to eq(invalid_position) # start lat (invalid)
       expect(bytes.shift(4)).to eq(invalid_position) # start lng (invalid)
       expect(bytes.shift(4)).to eq(invalid_position) # end lat (invalid)
       expect(bytes.shift(4)).to eq(invalid_position) # end lng (invalid)
-      expect(bytes.shift(4)).to eq(num2bytes(expected_fit_distance, 4)) # total_distance
+      expect(bytes.shift(4)).to eq(expected_fit_distance) # total_distance
     end
 
     context "with course point messasges" do
@@ -279,6 +306,25 @@ describe RubyFit::MessageWriter do
       expect(bytes.shift(4)).to eq(num2bytes(deg2semicircles(x), 4)) # lng
       expect(bytes.shift(4)).to eq(num2bytes(expected_fit_distance, 4)) # distance
     end
+
+    it "creates a valid event data message" do 
+      timestamp = Time.now.to_i
+      expected_timestamp = num2bytes(timestamp - RubyFit::Helpers::GARMIN_TIME_OFFSET, 4)
+
+      values = {
+        timestamp: timestamp,
+        event: :timer,
+        event_type: :start,
+        event_group: 0
+      }
+      message_bytes = described_class.data_message(:event, 0, values )
+      bytes = message_bytes.unpack("C*")
+      expect(bytes.shift(1)).to eq([make_message_header(local_number: 0)]) # Header
+      expect(bytes.shift(4)).to eq(expected_timestamp) # timestamp
+      expect(bytes.shift(1)).to eq(num2bytes(0, 1)) # event (timer)
+      expect(bytes.shift(1)).to eq(num2bytes(0, 1)) # event_type (start)
+      expect(bytes.shift(1)).to eq(num2bytes(0, 1)) # event_group
+    end
   end
 
   describe ".definition_message_size" do
@@ -291,7 +337,7 @@ describe RubyFit::MessageWriter do
     end
 
     it "returns the correct value for :lap" do 
-      expect(described_class.definition_message_size(:lap)).to eq(6 + 7*3)
+      expect(described_class.definition_message_size(:lap)).to eq(6 + 9*3)
     end
 
     it "returns the correct value for :course_point" do 
@@ -300,6 +346,10 @@ describe RubyFit::MessageWriter do
 
     it "returns the correct value for :record" do 
       expect(described_class.definition_message_size(:record)).to eq(6 + 5*3)
+    end
+
+    it "returns the correct value for :event" do 
+      expect(described_class.definition_message_size(:event)).to eq(6 + 4*3)
     end
   end
 
@@ -313,7 +363,7 @@ describe RubyFit::MessageWriter do
     end
 
     it "returns the correct value for :lap" do 
-      expect(described_class.data_message_size(:lap)).to eq(29)
+      expect(described_class.data_message_size(:lap)).to eq(37)
     end
 
     it "returns the correct value for :course_point" do 
@@ -322,6 +372,10 @@ describe RubyFit::MessageWriter do
 
     it "returns the correct value for :record" do 
       expect(described_class.data_message_size(:record)).to eq(19)
+    end
+
+    it "returns the correct value for :event" do 
+      expect(described_class.data_message_size(:event)).to eq(8)
     end
   end
 end

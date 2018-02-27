@@ -1,41 +1,12 @@
 require "rubyfit/type"
 require "rubyfit/helpers"
+require "rubyfit/message_constants"
 
 class RubyFit::MessageWriter
   extend RubyFit::Helpers
 
   FIT_PROTOCOL_VERSION = 0x10 # major 1, minor 0
   FIT_PROFILE_VERSION = 1 * 100 + 52 # major 1, minor 52
-
-  COURSE_POINT_TYPE = {
-    invalid: 255,
-    generic: 0,
-    summit: 1,
-    valley: 2,
-    water: 3,
-    food: 4,
-    danger: 5,
-    left: 6,
-    right: 7,
-    straight: 8,
-    first_aid: 9,
-    fourth_category: 10,
-    third_category: 11,
-    second_category: 12,
-    first_category: 13,
-    hors_category: 14,
-    sprint: 15,
-    left_fork: 16,
-    right_fork: 17,
-    middle_fork: 18,
-    slight_left: 19,
-    sharp_left: 20,
-    slight_right: 21,
-    sharp_right: 22,
-    u_turn: 23,
-    segment_start: 24,
-    segment_end: 25
-  }.freeze
 
   MESSAGE_DEFINITIONS = {
     file_id: {
@@ -59,6 +30,8 @@ class RubyFit::MessageWriter
       fields: {
         timestamp: { id: 253, type: RubyFit::Type.timestamp, required: true},
         start_time: { id: 2, type: RubyFit::Type.timestamp, required: true},
+        total_elapsed_time: { id: 7, type: RubyFit::Type.duration, required: true }, 
+        total_timer_time: { id: 8, type: RubyFit::Type.duration, required: true }, 
         start_y: { id: 3, type: RubyFit::Type.semicircles },
         start_x: { id: 4, type: RubyFit::Type.semicircles },
         end_y: { id: 5, type: RubyFit::Type.semicircles },
@@ -75,7 +48,7 @@ class RubyFit::MessageWriter
         distance: { id: 4, type: RubyFit::Type.centimeters },
         name: { id: 6, type: RubyFit::Type.string(16) },
         message_index: { id: 254, type: RubyFit::Type.uint16 },
-        type: { id: 5, type: RubyFit::Type.enum, values: COURSE_POINT_TYPE, required: true }
+        type: { id: 5, type: RubyFit::Type.enum, values: RubyFit::MessageConstants::COURSE_POINT_TYPE, required: true }
       },
     },
     record: {
@@ -86,6 +59,15 @@ class RubyFit::MessageWriter
         x: { id: 1, type: RubyFit::Type.semicircles, required: true },
         distance: { id: 5, type: RubyFit::Type.centimeters },
         elevation: { id: 2, type: RubyFit::Type.altitude },
+      }
+    },
+    event: {
+      id: 21,
+      fields: {
+        timestamp: { id: 253, type: RubyFit::Type.timestamp, required: true },
+        event: { id: 0, type: RubyFit::Type.enum, values: RubyFit::MessageConstants::EVENT, required: true },
+        event_type: { id: 1, type: RubyFit::Type.enum, values: RubyFit::MessageConstants::EVENT_TYPE, required: true },
+        event_group: { id: 4, type: RubyFit::Type.uint8 },
       }
     }
   }
