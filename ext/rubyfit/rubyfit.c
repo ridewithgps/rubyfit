@@ -18,6 +18,7 @@
 #include "math.h"
 
 #include "fit_convert.h"
+#include "fit_crc.h"
 
 VALUE mRubyFit;
 VALUE cFitParser;
@@ -540,6 +541,13 @@ static VALUE parse(VALUE self, VALUE original_str) {
 	return Qnil;
 }
 
+static VALUE update_crc(VALUE self, VALUE r_crc, VALUE r_data) {
+        FIT_UINT16 crc = NUM2USHORT(r_crc);
+        const char* data = StringValuePtr(r_data);
+        const FIT_UINT16 byte_count = RSTRING_LEN(r_data);
+        return UINT2NUM(FitCRC_Update16(crc, data, byte_count));
+}
+
 void Init_rubyfit() {
         mRubyFit = rb_define_module("RubyFit");
         cFitParser = rb_define_class_under(mRubyFit, "FitParser", rb_cObject);
@@ -551,4 +559,8 @@ void Init_rubyfit() {
 	//attributes
 	HANDLER_ATTR = rb_intern("@handler");
 	rb_define_attr(cFitParser, "handler", 1, 1);
+
+        // CRC helper
+        VALUE mCRC = rb_define_module_under(mRubyFit, "CRC");
+        rb_define_singleton_method(mCRC, "update_crc", update_crc, 2);
 }
