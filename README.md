@@ -17,3 +17,9 @@ Example:
     activities = callbacks.activities #assumes you have some sort of getter/attr_reader on your custom callbacks class
 
 When I get more time I'll document the messages, but for now you can look in ext/rubyfit/rubyfit.c to see what fields are being passed.
+
+To build and test the gem, run:
+```
+bundle install
+rake
+```

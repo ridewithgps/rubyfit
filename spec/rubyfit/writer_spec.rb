@@ -78,7 +78,7 @@ describe RubyFit::Writer do
     end
 
     def altitude_bytes(meters)
-      num2bytes((meters + 500).truncate, 2)
+      num2bytes((meters * 5 + 500).truncate, 2)
     end
 
     def duration_bytes(seconds)
@@ -274,7 +274,7 @@ describe RubyFit::Writer do
         *position_bytes(data[:y]), # lat
         *position_bytes(data[:x]), # lng
         *distance_bytes(distance), # distance
-        *altitude_bytes(data[:elevation]), # distance
+        *altitude_bytes(data[:elevation]), # elevation
       ]
       
       expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
