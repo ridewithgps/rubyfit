@@ -78,7 +78,7 @@ describe RubyFit::Writer do
     end
 
     def altitude_bytes(meters)
-      num2bytes((meters * 5 + 500).truncate, 2)
+      num2bytes(((meters + 500) * 5).truncate, 2)
     end
 
     def duration_bytes(seconds)
