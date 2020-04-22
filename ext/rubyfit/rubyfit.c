@@ -20,20 +20,8 @@
 #include "fit_convert.h"
 #include "fit_crc.h"
 
-VALUE mRubyFit;
-VALUE cFitParser;
-VALUE cFitHandler;
-VALUE cFitHandlerPrintFun;
-VALUE cFitHandlerPrintErrFun;
-VALUE cFitHandlerActivityFun;
-VALUE cFitHandlerRecordFun;
-VALUE cFitHandlerLapFun;
-VALUE cFitHandlerSessionFun;
-VALUE cFitHandlerDeviceInfoFun;
-VALUE cFitHandlerUserProfileFun;
-VALUE cFitHandlerEventFun;
-VALUE cFitHandlerWeightScaleInfoFun;
-static ID HANDLER_ATTR;
+#define FIT_CONVERT_MULTI_THREAD;
+
 /*
  * garmin/dynastream, decided to pinch pennies on bits by tinkering with well
  * established time offsets.  This is the magic number of seconds needed to add
@@ -43,12 +31,12 @@ static ID HANDLER_ATTR;
 const long GARMIN_TIME_OFFSET = 631065600;
 
 
-void pass_message(char *msg) {
-	rb_funcall(cFitHandler, cFitHandlerPrintFun, 1, rb_str_new2(msg));
+void pass_message(VALUE handler, char *msg) {
+	rb_funcall(handler, rb_intern("print_msg"), 1, rb_str_new2(msg));
 }
 
-void pass_err_message(char *msg) {
-	rb_funcall(cFitHandler, cFitHandlerPrintErrFun, 1, rb_str_new2(msg));
+void pass_err_message(VALUE handler, char *msg) {
+	rb_funcall(handler, rb_intern("print_error_msg"), 1, rb_str_new2(msg));
 }
 
 static VALUE fit_pos_to_rb(FIT_SINT32 pos) {
@@ -59,25 +47,12 @@ static VALUE fit_pos_to_rb(FIT_SINT32 pos) {
 
 
 static VALUE init(VALUE self, VALUE handler) {
-	cFitHandler = handler;
-	rb_ivar_set(self, HANDLER_ATTR, handler);
-
-	//callbacks
-	cFitHandlerPrintFun = rb_intern("print_msg");
-	cFitHandlerPrintErrFun = rb_intern("print_error_msg");
-	cFitHandlerActivityFun = rb_intern("on_activity");
-	cFitHandlerSessionFun = rb_intern("on_session");
-	cFitHandlerLapFun = rb_intern("on_lap");
-	cFitHandlerRecordFun = rb_intern("on_record");
-	cFitHandlerEventFun = rb_intern("on_event");
-	cFitHandlerDeviceInfoFun = rb_intern("on_device_info");
-	cFitHandlerUserProfileFun = rb_intern("on_user_profile");
-	cFitHandlerWeightScaleInfoFun = rb_intern("on_weight_scale_info");
+	rb_ivar_set(self, rb_intern("@handler"), handler);
 
 	return Qnil;
 }
 
-static void pass_activity(const FIT_ACTIVITY_MESG *mesg) {
+static void pass_activity(VALUE handler, const FIT_ACTIVITY_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
@@ -97,10 +72,10 @@ static void pass_activity(const FIT_ACTIVITY_MESG *mesg) {
 	if(mesg->event_group != FIT_UINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("event_group"), UINT2NUM(mesg->event_group));
 
-	rb_funcall(cFitHandler, cFitHandlerActivityFun, 1, rh);
+	rb_funcall(handler, rb_intern("on_activity"), 1, rh);
 }
 
-static void pass_record(const FIT_RECORD_MESG *mesg) {
+static void pass_record(VALUE handler, const FIT_RECORD_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
@@ -145,10 +120,10 @@ static void pass_record(const FIT_RECORD_MESG *mesg) {
 	if(mesg->combined_pedal_smoothness != FIT_UINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("combined_pedal_smoothness"), UINT2NUM(mesg->combined_pedal_smoothness));
 
-	rb_funcall(cFitHandler, cFitHandlerRecordFun, 1, rh);
+	rb_funcall(handler, rb_intern("on_record"), 1, rh);
 }
 
-static void pass_lap(const FIT_LAP_MESG *mesg) {
+static void pass_lap(VALUE handler, const FIT_LAP_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
@@ -210,10 +185,10 @@ static void pass_lap(const FIT_LAP_MESG *mesg) {
         if(mesg->event_group != FIT_UINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("event_group"), UINT2NUM(mesg->event_group));
 
-	rb_funcall(cFitHandler, cFitHandlerLapFun, 1, rh);
+	rb_funcall(handler, rb_intern("on_lap"), 1, rh);
 }
 
-static void pass_session(const FIT_SESSION_MESG *mesg) {
+static void pass_session(VALUE handler, const FIT_SESSION_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
@@ -283,10 +258,10 @@ static void pass_session(const FIT_SESSION_MESG *mesg) {
 	if(mesg->total_training_effect != FIT_UINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("total_training_effect"), UINT2NUM(mesg->total_training_effect));
 
-	rb_funcall(cFitHandler, cFitHandlerSessionFun, 1, rh);
+	rb_funcall(handler, rb_intern("on_session"), 1, rh);
 }
 
-static void pass_user_profile(const FIT_USER_PROFILE_MESG *mesg) {
+static void pass_user_profile(VALUE handler, const FIT_USER_PROFILE_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
         if(mesg->friendly_name != FIT_STRING_INVALID)
@@ -328,10 +303,10 @@ static void pass_user_profile(const FIT_USER_PROFILE_MESG *mesg) {
 	if(mesg->position_setting != FIT_DISPLAY_POSITION_INVALID)
 		rb_hash_aset(rh, rb_str_new2("position_setting"), UINT2NUM(mesg->position_setting));
 
-	rb_funcall(cFitHandler, cFitHandlerUserProfileFun, 1, rh);
+	rb_funcall(handler, rb_intern("on_user_profile"), 1, rh);
 }
 
-static void pass_event(const FIT_EVENT_MESG *mesg) {
+static void pass_event(VALUE handler, const FIT_EVENT_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
@@ -347,10 +322,10 @@ static void pass_event(const FIT_EVENT_MESG *mesg) {
 	if(mesg->event_group != FIT_UINT8_INVALID)
 	        rb_hash_aset(rh, rb_str_new2("event_group"), UINT2NUM(mesg->event_group));
 
-	rb_funcall(cFitHandler, cFitHandlerEventFun, 1, rh);
+	rb_funcall(handler, rb_intern("on_event"), 1, rh);
 }
 
-static void pass_device_info(const FIT_DEVICE_INFO_MESG *mesg) {
+static void pass_device_info(VALUE handler, const FIT_DEVICE_INFO_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
@@ -374,10 +349,10 @@ static void pass_device_info(const FIT_DEVICE_INFO_MESG *mesg) {
 	if(mesg->battery_status != FIT_BATTERY_STATUS_INVALID)
 		rb_hash_aset(rh, rb_str_new2("battery_status"), UINT2NUM(mesg->battery_status));
 
-	rb_funcall(cFitHandler, cFitHandlerDeviceInfoFun, 1, rh);
+	rb_funcall(handler, rb_intern("on_device_info"), 1, rh);
 }
 
-static void pass_weight_scale_info(const FIT_WEIGHT_SCALE_MESG *mesg) {
+static void pass_weight_scale_info(VALUE handler, const FIT_WEIGHT_SCALE_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
 	if(mesg->timestamp != FIT_DATE_TIME_INVALID)
@@ -405,12 +380,13 @@ static void pass_weight_scale_info(const FIT_WEIGHT_SCALE_MESG *mesg) {
 	if(mesg->visceral_fat_rating != FIT_UINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("visceral_fat_rating"), rb_float_new(mesg->visceral_fat_rating));
 
-	rb_funcall(cFitHandler, cFitHandlerWeightScaleInfoFun, 1, rh);
+	rb_funcall(handler, rb_intern("on_weight_scale_info"), 1, rh);
 }
 
 static VALUE parse(VALUE self, VALUE original_str) {
 	int i = 0;
 	VALUE str = StringValue(original_str);
+	VALUE handler = rb_ivar_get(self, rb_intern("@handler"));
 	char *p = RSTRING_PTR(str);
 	char err_msg[128];
 
@@ -421,7 +397,7 @@ static VALUE parse(VALUE self, VALUE original_str) {
 
 	if(RSTRING_LEN(str) == 0) {
 		//sprintf(err_msg, "Passed in string with length of 0!");
-		pass_err_message(err_msg);
+		pass_err_message(handler, err_msg);
 		return Qnil;
 	}
 
@@ -447,63 +423,63 @@ static VALUE parse(VALUE self, VALUE original_str) {
 
 						case FIT_MESG_NUM_USER_PROFILE: {
 							const FIT_USER_PROFILE_MESG *user_profile = (FIT_USER_PROFILE_MESG *) mesg;
-							pass_user_profile(user_profile);
+							pass_user_profile(handler, user_profile);
 							break;
 						}
 
 						case FIT_MESG_NUM_ACTIVITY: {
 							const FIT_ACTIVITY_MESG *activity = (FIT_ACTIVITY_MESG *) mesg;
-							pass_activity(activity);
+							pass_activity(handler, activity);
 
 							{
 								FIT_ACTIVITY_MESG old_mesg;
 								old_mesg.num_sessions = 1;
 								FitConvert_RestoreFields(&old_mesg);
 								sprintf(err_msg, "Restored num_sessions=1 - Activity: timestamp=%u, type=%u, event=%u, event_type=%u, num_sessions=%u\n", activity->timestamp, activity->type, activity->event, activity->event_type, activity->num_sessions);
-								pass_message(err_msg);
+								pass_message(handler, err_msg);
 							}
 							break;
 						}
 
 						case FIT_MESG_NUM_SESSION: {
 							const FIT_SESSION_MESG *session = (FIT_SESSION_MESG *) mesg;
-							pass_session(session);
+							pass_session(handler, session);
 							break;
 						}
 
 						case FIT_MESG_NUM_LAP: {
 							const FIT_LAP_MESG *lap = (FIT_LAP_MESG *) mesg;
-							pass_lap(lap);
+							pass_lap(handler, lap);
 							break;
 						}
 
 						case FIT_MESG_NUM_RECORD: {
 							const FIT_RECORD_MESG *record = (FIT_RECORD_MESG *) mesg;
-							pass_record(record);
+							pass_record(handler, record);
 							break;
 						}
 
 						case FIT_MESG_NUM_EVENT: {
 							const FIT_EVENT_MESG *event = (FIT_EVENT_MESG *) mesg;
-							pass_event(event);
+							pass_event(handler, event);
 							break;
 						}
 
 						case FIT_MESG_NUM_DEVICE_INFO: {
 							const FIT_DEVICE_INFO_MESG *device_info = (FIT_DEVICE_INFO_MESG *) mesg;
-							pass_device_info(device_info);
+							pass_device_info(handler, device_info);
 							break;
 						}
 
 						case FIT_MESG_NUM_WEIGHT_SCALE: {
 							const FIT_WEIGHT_SCALE_MESG *weight_scale_info = (FIT_WEIGHT_SCALE_MESG *) mesg;
-							pass_weight_scale_info(weight_scale_info);
+							pass_weight_scale_info(handler, weight_scale_info);
 							break;
 						}
 
 						default: {
 							sprintf(err_msg, "Unknown message\n");
-							pass_message(err_msg);
+							pass_message(handler, err_msg);
 							break;
 						}
 					}
@@ -517,25 +493,25 @@ static VALUE parse(VALUE self, VALUE original_str) {
 
 	if (convert_return == FIT_CONVERT_ERROR) {
 		sprintf(err_msg, "Error decoding file.\n");
-		pass_err_message(err_msg);
+		pass_err_message(handler, err_msg);
 		return Qnil;
 	}
 
 	if (convert_return == FIT_CONVERT_CONTINUE) {
 		sprintf(err_msg, "Unexpected end of file.\n");
-		pass_err_message(err_msg);
+		pass_err_message(handler, err_msg);
 		return Qnil;
 	}
 
 	if (convert_return == FIT_CONVERT_PROTOCOL_VERSION_NOT_SUPPORTED) {
 		sprintf(err_msg, "Protocol version not supported.\n");
-		pass_err_message(err_msg);
+		pass_err_message(handler, err_msg);
 		return Qnil;
 	}
 
 	if (convert_return == FIT_CONVERT_END_OF_FILE) {
 		sprintf(err_msg, "File converted successfully.\n");
-		pass_message(err_msg);
+		pass_message(handler, err_msg);
 	}
 
 	return Qnil;
@@ -549,15 +525,14 @@ static VALUE update_crc(VALUE self, VALUE r_crc, VALUE r_data) {
 }
 
 void Init_rubyfit() {
-        mRubyFit = rb_define_module("RubyFit");
-        cFitParser = rb_define_class_under(mRubyFit, "FitParser", rb_cObject);
+        VALUE mRubyFit = rb_define_module("RubyFit");
+        VALUE cFitParser = rb_define_class_under(mRubyFit, "FitParser", rb_cObject);
 
 	//instance methods
 	rb_define_method(cFitParser, "initialize", init, 1);
 	rb_define_method(cFitParser, "parse", parse, 1);
 
 	//attributes
-	HANDLER_ATTR = rb_intern("@handler");
 	rb_define_attr(cFitParser, "handler", 1, 1);
 
         // CRC helper
