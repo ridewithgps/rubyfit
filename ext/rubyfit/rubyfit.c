@@ -20,8 +20,6 @@
 #include "fit_convert.h"
 #include "fit_crc.h"
 
-#define FIT_CONVERT_MULTI_THREAD;
-
 /*
  * garmin/dynastream, decided to pinch pennies on bits by tinkering with well
  * established time offsets.  This is the magic number of seconds needed to add
@@ -92,6 +90,8 @@ static void pass_record(VALUE handler, const FIT_RECORD_MESG *mesg) {
 		rb_hash_aset(rh, rb_str_new2("heart_rate"), UINT2NUM(mesg->heart_rate));
 	if(mesg->altitude != FIT_UINT16_INVALID)
 		rb_hash_aset(rh, rb_str_new2("altitude"), rb_float_new(mesg->altitude / 5.0 - 500));
+	if(mesg->enhanced_altitude != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("enhanced_altitude"), rb_float_new(mesg->enhanced_altitude / 5.0 - 500));
 	if(mesg->speed != FIT_UINT16_INVALID)
 		rb_hash_aset(rh, rb_str_new2("speed"), rb_float_new(mesg->speed / 1000.0));
 	if(mesg->grade != FIT_SINT16_INVALID)
@@ -393,7 +393,8 @@ static VALUE parse(VALUE self, VALUE original_str) {
 	FIT_UINT8 buf[8];
 	FIT_CONVERT_RETURN convert_return = FIT_CONVERT_CONTINUE;
 	FIT_UINT32 buf_size;
-	FitConvert_Init(FIT_TRUE);
+	FIT_CONVERT_STATE state;
+	FitConvert_Init(&state, FIT_TRUE);
 
 	if(RSTRING_LEN(str) == 0) {
 		//sprintf(err_msg, "Passed in string with length of 0!");
@@ -409,12 +410,12 @@ static VALUE parse(VALUE self, VALUE original_str) {
 		}
 
 		do {
-			convert_return = FitConvert_Read(buf, buf_size);
+			convert_return = FitConvert_Read(&state, buf, buf_size);
 
 			switch(convert_return) {
 				case FIT_CONVERT_MESSAGE_AVAILABLE: {
-					const FIT_UINT8 *mesg = FitConvert_GetMessageData();
-					FIT_UINT16 mesg_num = FitConvert_GetMessageNumber();
+					const FIT_UINT8 *mesg = FitConvert_GetMessageData(&state);
+					FIT_UINT16 mesg_num = FitConvert_GetMessageNumber(&state);
 
 					switch(mesg_num) {
 						case FIT_MESG_NUM_FILE_ID: {
@@ -434,7 +435,7 @@ static VALUE parse(VALUE self, VALUE original_str) {
 							{
 								FIT_ACTIVITY_MESG old_mesg;
 								old_mesg.num_sessions = 1;
-								FitConvert_RestoreFields(&old_mesg);
+								FitConvert_RestoreFields(&state, &old_mesg);
 								sprintf(err_msg, "Restored num_sessions=1 - Activity: timestamp=%u, type=%u, event=%u, event_type=%u, num_sessions=%u\n", activity->timestamp, activity->type, activity->event, activity->event_type, activity->num_sessions);
 								pass_message(handler, err_msg);
 							}
