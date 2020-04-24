@@ -90,10 +90,12 @@ static void pass_record(VALUE handler, const FIT_RECORD_MESG *mesg) {
 		rb_hash_aset(rh, rb_str_new2("heart_rate"), UINT2NUM(mesg->heart_rate));
 	if(mesg->altitude != FIT_UINT16_INVALID)
 		rb_hash_aset(rh, rb_str_new2("altitude"), rb_float_new(mesg->altitude / 5.0 - 500));
-	if(mesg->enhanced_altitude != FIT_UINT16_INVALID)
+	if(mesg->enhanced_altitude != FIT_UINT32_INVALID)
 		rb_hash_aset(rh, rb_str_new2("enhanced_altitude"), rb_float_new(mesg->enhanced_altitude / 5.0 - 500));
 	if(mesg->speed != FIT_UINT16_INVALID)
 		rb_hash_aset(rh, rb_str_new2("speed"), rb_float_new(mesg->speed / 1000.0));
+	if(mesg->enhanced_speed != FIT_UINT32_INVALID)
+		rb_hash_aset(rh, rb_str_new2("enhanced_speed"), rb_float_new(mesg->enhanced_speed / 1000.0));
 	if(mesg->grade != FIT_SINT16_INVALID)
 		rb_hash_aset(rh, rb_str_new2("grade"), rb_float_new(mesg->grade / 100.0));
 	if(mesg->power != FIT_UINT16_INVALID)
@@ -156,6 +158,22 @@ static void pass_lap(VALUE handler, const FIT_LAP_MESG *mesg) {
 		rb_hash_aset(rh, rb_str_new2("avg_speed"), rb_float_new(mesg->avg_speed / 1000.0));
 	if(mesg->max_speed != FIT_UINT16_INVALID)
 		rb_hash_aset(rh, rb_str_new2("max_speed"), rb_float_new(mesg->max_speed / 1000.0));
+	if(mesg->enhanced_avg_speed != FIT_UINT32_INVALID)
+		rb_hash_aset(rh, rb_str_new2("enhanced_avg_speed"), rb_float_new(mesg->enhanced_avg_speed / 1000.0));
+	if(mesg->enhanced_max_speed != FIT_UINT32_INVALID)
+		rb_hash_aset(rh, rb_str_new2("enhanced_max_speed"), rb_float_new(mesg->enhanced_max_speed / 1000.0));
+	if(mesg->avg_altitude != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("avg_altitude"), rb_float_new(mesg->avg_altitude / 5.0 - 500));
+	if(mesg->max_altitude != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("max_altitude"), rb_float_new(mesg->max_altitude / 5.0 - 500));
+	if(mesg->min_altitude != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("min_altitude"), rb_float_new(mesg->min_altitude / 5.0 - 500));
+	if(mesg->enhanced_avg_altitude != FIT_UINT32_INVALID)
+		rb_hash_aset(rh, rb_str_new2("enhanced_avg_altitude"), rb_float_new(mesg->enhanced_avg_altitude / 5.0 - 500));
+	if(mesg->enhanced_max_altitude != FIT_UINT32_INVALID)
+		rb_hash_aset(rh, rb_str_new2("enhanced_max_altitude"), rb_float_new(mesg->enhanced_max_altitude / 5.0 - 500));
+	if(mesg->enhanced_min_altitude != FIT_UINT32_INVALID)
+		rb_hash_aset(rh, rb_str_new2("enhanced_min_altitude"), rb_float_new(mesg->enhanced_min_altitude / 5.0 - 500));
 	if(mesg->avg_power != FIT_UINT16_INVALID)
 		rb_hash_aset(rh, rb_str_new2("avg_power"), UINT2NUM(mesg->avg_power));
 	if(mesg->max_power != FIT_UINT16_INVALID)
@@ -264,7 +282,7 @@ static void pass_session(VALUE handler, const FIT_SESSION_MESG *mesg) {
 static void pass_user_profile(VALUE handler, const FIT_USER_PROFILE_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
-        if(mesg->friendly_name != FIT_STRING_INVALID)
+        if(*mesg->friendly_name != FIT_STRING_INVALID)
 	        rb_hash_aset(rh, rb_str_new2("friendly_name"), rb_str_new2(mesg->friendly_name));
 	if(mesg->message_index != FIT_MESSAGE_INDEX_INVALID)
 		rb_hash_aset(rh, rb_str_new2("message_index"), UINT2NUM(mesg->message_index));
