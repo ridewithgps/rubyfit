@@ -273,8 +273,16 @@ static void pass_session(VALUE handler, const FIT_SESSION_MESG *mesg) {
 		rb_hash_aset(rh, rb_str_new2("sub_sport"), CHR2FIX(mesg->sub_sport));
 	if(mesg->event_group != FIT_UINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("event_group"), UINT2NUM(mesg->event_group));
+	if(mesg->normalized_power != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("normalized_power"), UINT2NUM(mesg->normalized_power));
+	if(mesg->intensity_factor != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("intensity_factor"), rb_float_new(mesg->intensity_factor / 1000.0));
+	if(mesg->training_stress_score != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("training_stress_score"), rb_float_new(mesg->training_stress_score / 10.0));
 	if(mesg->total_training_effect != FIT_UINT8_INVALID)
 		rb_hash_aset(rh, rb_str_new2("total_training_effect"), UINT2NUM(mesg->total_training_effect));
+	if(mesg->total_anaerobic_training_effect != FIT_UINT8_INVALID)
+		rb_hash_aset(rh, rb_str_new2("total_anaerobic_training_effect"), UINT2NUM(mesg->total_anaerobic_training_effect));
 
 	rb_funcall(handler, rb_intern("on_session"), 1, rh);
 }
