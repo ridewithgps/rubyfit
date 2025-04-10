@@ -26,7 +26,34 @@ module RubyFit::MessageConstants
     sharp_right: 22,
     u_turn: 23,
     segment_start: 24,
-    segment_end: 25
+    segment_end: 25,
+    campsite: 27,
+    aid_station: 28,
+    rest_area: 29,
+    general_distance: 30, # Used with UpAhead
+    service: 31,
+    energy_gel: 32,
+    sports_drink: 33,
+    mile_marker: 34,
+    checkpoint: 35,
+    shelter: 36,
+    meeting_spot: 37,
+    overlook: 38,
+    toilet: 39,
+    shower: 40,
+    gear: 41,
+    sharp_curve: 42,
+    steep_incline: 43,
+    tunnel: 44,
+    bridge: 45,
+    obstacle: 46,
+    crossing: 47,
+    store: 48,
+    transition: 49,
+    navaid: 50,
+    transport: 51,
+    alert: 52,
+    info: 53
   }.freeze
 
   EVENT_TYPE = {
