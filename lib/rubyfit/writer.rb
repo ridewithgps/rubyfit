@@ -66,6 +66,74 @@ class RubyFit::Writer
     @state = nil
   end
 
+  def write_activity(stream, opts = {})
+    raise "Can't start write mode from #{@state}" if @state
+    @state = :write
+    @local_nums = {}
+    @last_local_num = -1
+
+    @stream = stream
+
+    %i(start_time duration track_point_count name
+       total_distance time_created start_x start_y end_x end_y).each do |key|
+      raise ArgumentError.new("Missing required option #{key}") unless opts[key]
+    end
+
+    start_time = opts[:start_time].to_i
+    duration = opts[:duration].to_i
+    
+    @data_crc = 0
+
+    data_size = calculate_data_size(opts[:course_point_count], opts[:track_point_count])
+    write_data(RubyFit::MessageWriter.file_header(data_size))
+
+    write_message(:file_id, {
+      time_created: opts[:time_created],
+      type: 4, # activity file. see line 47 in fit_example.h
+      manufacturer: 1, # Garmin
+      product: PRODUCT_ID,
+      serial_number: 0,
+    })
+
+    #in order to figure out activity file structure, i modified FitCallback
+    #instanciation to have debug=true, then uploaded a fit file from my watch.
+    #i then looked at the logging messages to see file structure.
+    #https://gist.github.com/kingcu/d908e21b94d74a5bf2aed758b011ad03
+    #
+    #looks like it goes:
+    #event,device_infos,record (spurious?),device info, records,
+    #event,device_info,lap,session,activity
+    #we can prob drop all the device_info stuff (we don't store that anyway).
+    #that leaves us likely able to just write 
+
+    #session is for summary stats of all the things
+    #session: {"timestamp"=>1740798027, "start_time"=>1740790540, "start_position_lat"=>44.40910339355469, "start_position_long"=>-121.8720474243164, "total_elapsed_time"=>7475.258, "total_timer_time"=>7475.258, "total_distance"=>8354.97, "nec_lat"=>44.41200637817383, "nec_long"=>-121.87085723876953, "swc_lat"=>44.40285110473633, "swc_long"=>-121.8796615600586, "message_index"=>0, "total_calories"=>211, "total_ascent"=>663, "total_descent"=>662, "first_lap_index"=>0, "num_laps"=>5, "event"=>9, "event_type"=>1, "avg_heart_rate"=>66, "max_heart_rate"=>92, "sport"=>14, "sub_sport"=>0, "total_training_effect"=>1}
+
+    #activity is the wrapper
+    #activity: {"timestamp"=>1740798027, "total_timer_time"=>7475.258, "local_timestamp"=>1740769227.0, "num_sessions"=>1, "type"=>0, "event"=>26, "event_type"=>1}
+
+    #activity.num_sessions = 1, keep it simple and 1 session per activity
+    #activity.type = 0 for generic. instead it relies on sport/sub_sport
+    #activity.event=26, stop at end of activity fit_example.h line 804
+    #activity.event_type=1, stopped fit_example.h line 821
+
+    #fit files are records then container. so a lap has records then a lap message at the end to call it a lap.
+
+    #so from here, we need to:
+    #write_message(:event)
+    #write_message(:device_info)
+    #for each point { write_message(:record); if point == lap then write_message(:lap) }
+    #write_message(:event)
+    #write_message(:lap) #there's always one lap.
+    #write_message(:session)
+    #write_message(:activity)
+
+
+
+    write_data(RubyFit::MessageWriter.crc(@data_crc))
+    @state = nil
+  end
+
   def course_points
     raise "Can only start course points mode inside 'write' block" if @state != :write
     @state = :course_points
