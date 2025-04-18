@@ -107,4 +107,45 @@ module RubyFit::MessageConstants
     elev_low_alert: 46, # Group 0.  Start / stop when in alert condition.
     comm_timeout: 47, # marker
   }.freeze
+
+  ACTIVITY_TYPE = {
+    generic: 0,
+    running: 1,
+    cycling: 2,
+    transition: 3,
+    fitness_equipment: 4,
+    swimming: 5,
+    walking: 6,
+    sedentary: 8,
+    all: 254
+  }.freeze
+
+  SPORT = {
+  }
+
+  SUB_SPORT = {
+  }
+
+  SESSION_TRIGGER = {
+    activity_end: 0,
+    manual: 1,
+    auto_multi_sport: 2,
+    fitness_equipment: 3
+  }
+
+  SWIM_STROKE = {
+    freestyle: 0,
+    backstroke: 1,
+    breastroke: 2,
+    butterfly: 3,
+    drill: 4,
+    mixed: 5,
+    im: 6
+  }
+
+  DISPLAY_MEASURE = {
+    metric: 0,
+    statute: 1,
+    nautical: 2
+  }
 end
