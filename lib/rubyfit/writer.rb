@@ -66,6 +66,19 @@ class RubyFit::Writer
     @state = nil
   end
 
+  # Writes an Activity FIT file.
+  # Assumes a single lap and session for the entire activity.
+  # Required opts:
+  #   :start_time (Time or Integer timestamp)
+  #   :duration (Integer seconds)
+  #   :track_point_count (Integer)
+  #   :time_created (Time or Integer timestamp)
+  #   :total_distance (Integer centimeters)
+  #   :sport (Symbol, e.g., :running, see MessageConstants::SPORT)
+  #   :sub_sport (Symbol, e.g., :generic, see MessageConstants::SUB_SPORT)
+  # Optional opts (used in lap/session messages):
+  #   :start_x, :start_y, :end_x, :end_y lat/long coordinates
+  #   :total_calories, :total_ascent, :total_descent, :avg_speed, :max_speed, etc.
   def write_activity(stream, opts = {})
     raise "Can't start write mode from #{@state}" if @state
     @state = :write
@@ -74,66 +87,112 @@ class RubyFit::Writer
 
     @stream = stream
 
-    %i(start_time duration track_point_count name
-       total_distance time_created start_x start_y end_x end_y).each do |key|
+    required_opts = %i(start_time duration track_point_count time_created total_distance sport sub_sport)
+    required_opts.each do |key|
       raise ArgumentError.new("Missing required option #{key}") unless opts[key]
     end
 
     start_time = opts[:start_time].to_i
     duration = opts[:duration].to_i
-    
+    end_time = opts[:end_time]&.to_i || start_time + duration
+
     @data_crc = 0
 
-    data_size = calculate_data_size(opts[:course_point_count], opts[:track_point_count])
+    # Calculate size based on activity messages
+    data_size = calculate_activity_data_size(opts[:track_point_count])
     write_data(RubyFit::MessageWriter.file_header(data_size))
 
+    # File ID Message
     write_message(:file_id, {
-      time_created: opts[:time_created],
-      type: 4, # activity file. see line 47 in fit_example.h
+      time_created: opts[:time_created].to_i,
+      type: 4, # Activity file
       manufacturer: 1, # Garmin
       product: PRODUCT_ID,
-      serial_number: 0,
+      serial_number: 0
     })
 
-    #in order to figure out activity file structure, i modified FitCallback
-    #instanciation to have debug=true, then uploaded a fit file from my watch.
-    #i then looked at the logging messages to see file structure.
-    #https://gist.github.com/kingcu/d908e21b94d74a5bf2aed758b011ad03
-    #
-    #looks like it goes:
-    #event,device_infos,record (spurious?),device info, records,
-    #event,device_info,lap,session,activity
-    #we can prob drop all the device_info stuff (we don't store that anyway).
-    #that leaves us likely able to just write 
+    # 2. Event Message, Start
+    write_message(:event, {
+      timestamp: start_time,
+      event: :timer,
+      event_type: :start,
+      event_group: 0
+    })
 
-    #session is for summary stats of all the things
-    #session: {"timestamp"=>1740798027, "start_time"=>1740790540, "start_position_lat"=>44.40910339355469, "start_position_long"=>-121.8720474243164, "total_elapsed_time"=>7475.258, "total_timer_time"=>7475.258, "total_distance"=>8354.97, "nec_lat"=>44.41200637817383, "nec_long"=>-121.87085723876953, "swc_lat"=>44.40285110473633, "swc_long"=>-121.8796615600586, "message_index"=>0, "total_calories"=>211, "total_ascent"=>663, "total_descent"=>662, "first_lap_index"=>0, "num_laps"=>5, "event"=>9, "event_type"=>1, "avg_heart_rate"=>66, "max_heart_rate"=>92, "sport"=>14, "sub_sport"=>0, "total_training_effect"=>1}
+    # 3. Record Messages
+    yield # put the track points here
 
-    #activity is the wrapper
-    #activity: {"timestamp"=>1740798027, "total_timer_time"=>7475.258, "local_timestamp"=>1740769227.0, "num_sessions"=>1, "type"=>0, "event"=>26, "event_type"=>1}
+    # 4. Event Message, Stop
+    write_message(:event, {
+      timestamp: end_time,
+      event: :timer,
+      event_type: :stop_disable_all, # Use stop_disable_all for final event
+      event_group: 0
+    })
 
-    #activity.num_sessions = 1, keep it simple and 1 session per activity
-    #activity.type = 0 for generic. instead it relies on sport/sub_sport
-    #activity.event=26, stop at end of activity fit_example.h line 804
-    #activity.event_type=1, stopped fit_example.h line 821
+    # 5. Lap Message, One lap for the whole activity
+    lap_data = {
+      message_index: 0, # First lap
+      timestamp: end_time, # Lap end time
+      start_time: start_time,
+      total_elapsed_time: duration,
+      total_timer_time: duration,
+      total_distance: opts[:total_distance],
+      # Optional position data
+      start_x: opts[:start_x],
+      start_y: opts[:start_y],
+      end_x: opts[:end_x],
+      end_y: opts[:end_y]
+    }
+    write_message(:lap, lap_data)
 
-    #fit files are records then container. so a lap has records then a lap message at the end to call it a lap.
+    # 6. Session Message, Summarize Lap
+    session_data = {
+      message_index: 0, # First session
+      timestamp: end_time, # Session end time
+      start_time: start_time,
+      total_elapsed_time: duration,
+      total_timer_time: duration,
+      num_laps: 1,
+      first_lap_index: 0,
+      event: :session, # needed for end of session event
+      event_type: :stop, # needed for end of session event
+      trigger: :activity_end,
+      # positional data
+      start_position_lat: opts[:start_y],
+      start_position_long: opts[:start_x],
+      nec_lat: opts[:nec_y] || opts[:end_y],
+      nec_long: opts[:nec_x] || opts[:end_x],
+      swc_lat: opts[:swc_y] || opts[:start_y],
+      swc_long: opts[:swc_x] || opts[:start_x],
+      # important fields
+      sport: opts[:sport] || :cycling,
+      sub_sport: opts[:sub_sport] || :generic
+    }.merge(
+      # Add optional session fields if available
+      opts.select { |k, _| %i[total_ascent total_descent avg_speed total_calories total_distance max_speed].include?(k) }
+    ) # Merge common optional fields
+    write_message(:session, session_data)
 
-    #so from here, we need to:
-    #write_message(:event)
-    #write_message(:device_info)
-    #for each point { write_message(:record); if point == lap then write_message(:lap) }
-    #write_message(:event)
-    #write_message(:lap) #there's always one lap.
-    #write_message(:session)
-    #write_message(:activity)
+    activity_data = {
+      timestamp: end_time,
+      total_timer_time: duration,
+      num_sessions: 1,
+      # limited amounts of activity types
+      type: %i[running cycling transition fitness_equipment swimming].include?(opts[:sport]) ? opts[:sport] : :generic,
+      event: :activity,
+      event_type: :stop
+      # local_timestamp: opts[:local_timestamp] # very unsure about this.
+   }
+    # 7. Activity Message
+    write_message(:activity, activity_data)
 
-
-
+    # 8. Final CRC
     write_data(RubyFit::MessageWriter.crc(@data_crc))
     @state = nil
   end
 
+  # Course writing methods remain unchanged
   def course_points
     raise "Can only start course points mode inside 'write' block" if @state != :write
     @state = :course_points
@@ -178,24 +237,49 @@ class RubyFit::Writer
     @data_crc = RubyFit::CRC.update_crc(@data_crc, data)
   end
 
+  # Calculates data size for a Course FIT file
   def calculate_data_size(course_point_count, track_point_count)
     record_counts = {
       file_id: 1,
       course: 1,
       lap: 1,
       event: 2,
-      course_point: course_point_count, 
-      record: track_point_count,
+      course_point: course_point_count || 0,
+      record: track_point_count || 0
     }
+    calculate_total_size(record_counts)
+  end
 
-    data_sizes = record_counts.map do |type, count|
-      def_size = RubyFit::MessageWriter.definition_message_size(type)
-      data_size = RubyFit::MessageWriter.data_message_size(type) * count 
-      result = def_size + data_size
-      puts "#{type}: #{result}"
-      result
+  # calculates data size for an Activity FIT file
+  def calculate_activity_data_size(track_point_count)
+    record_counts = {
+      file_id: 1,
+      event: 2, # Start, Stop
+      record: track_point_count || 0,
+      lap: 1,
+      session: 1,
+      activity: 1
+    }
+    calculate_total_size(record_counts)
+  end
+
+  # helper method to calculate the total size of the FIT file
+  def calculate_total_size(record_counts)
+    # ensure we have not double counting by tracking with records have already been processed
+    definition_sizes_accounted = Set.new
+    total_size = 0
+    record_counts.each do |type, count|
+      next if count.zero?
+
+      # add definition size only once per message type
+      unless definition_sizes_accounted.include?(type)
+        total_size += RubyFit::MessageWriter.definition_message_size(type)
+        definition_sizes_accounted.add(type)
+      end
+
+      # add data size for all instances of the message
+      total_size += RubyFit::MessageWriter.data_message_size(type) * count
     end
-
-    data_sizes.reduce(&:+)
+    total_size
   end
 end
