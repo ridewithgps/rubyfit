@@ -42,8 +42,8 @@ class RubyFit::MessageWriter
       fields: {
         timestamp: { id: 253, type: RubyFit::Type.timestamp, required: true },
         start_time: { id: 2, type: RubyFit::Type.timestamp, required: true },
-        start_position_lat: { id: 3, type: RubyFit::Type.semicircles, required: true },
-        start_position_long: { id: 4, type: RubyFit::Type.semicircles, required: true },
+        start_position_lat: { id: 3, type: RubyFit::Type.semicircles },
+        start_position_long: { id: 4, type: RubyFit::Type.semicircles },
         total_elapsed_time: { id: 7, type: RubyFit::Type.duration, required: true },
         total_timer_time: { id: 8, type: RubyFit::Type.duration },
         total_distance: { id: 9, type: RubyFit::Type.centimeters, required: true },
