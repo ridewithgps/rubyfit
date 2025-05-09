@@ -16,34 +16,34 @@ class RubyFit::MessageWriter
         time_created: { id: 4, type: RubyFit::Type.timestamp, required: true },
         manufacturer: { id: 1, type: RubyFit::Type.uint16 }, # See FIT_MANUFACTURER_*
         product: { id: 2, type: RubyFit::Type.uint16 },
-        type: { id: 0, type: RubyFit::Type.enum, required: true }, # See FIT_FILE_*
+        type: { id: 0, type: RubyFit::Type.enum, required: true } # See FIT_FILE_*
       }
     },
     course: {
       id: 31,
       fields: {
-        name: { id: 5, type: RubyFit::Type.string(16), required: true },
+        name: { id: 5, type: RubyFit::Type.string(16), required: true }
       }
     },
     activity: {
-      id: 34, #fit_example.h line 92
-      fields: { #fit_example.h line 5001
-        timestamp: { id: 253, type: RubyFit::Type.timestamp, required: true},
-        total_timer_time: { id: 0, type: RubyFit::Type.duration, required: true }, 
+      id: 34, # fit_example.h line 92
+      fields: { # fit_example.h line 5001
+        timestamp: { id: 253, type: RubyFit::Type.timestamp, required: true },
+        total_timer_time: { id: 0, type: RubyFit::Type.duration, required: true },
         num_sessions: { id: 1, type: RubyFit::Type.uint16, required: true },
         type: { id: 2, type: RubyFit::Type.enum, values: RubyFit::MessageConstants::ACTIVITY_TYPE, required: true },
         event: { id: 3, type: RubyFit::Type.enum, values: RubyFit::MessageConstants::EVENT, required: true },
         event_type: { id: 4, type: RubyFit::Type.enum, values: RubyFit::MessageConstants::EVENT_TYPE, required: true },
-        event_group: { id: 6, type: RubyFit::Type.uint8 },
+        event_group: { id: 6, type: RubyFit::Type.uint8 }
       }
     },
     session: {
-      id: 18, #fit_example.h line 80
+      id: 18, # fit_example.h line 80
       fields: {
         timestamp: { id: 253, type: RubyFit::Type.timestamp, required: true },
         start_time: { id: 2, type: RubyFit::Type.timestamp, required: true },
-        start_position_lat: { id: 3, type: RubyFit::Type.semicircles, required: true },
-        start_position_long: { id: 4, type: RubyFit::Type.semicircles, required: true },
+        start_position_lat: { id: 3, type: RubyFit::Type.semicircles },
+        start_position_long: { id: 4, type: RubyFit::Type.semicircles },
         total_elapsed_time: { id: 7, type: RubyFit::Type.duration, required: true },
         total_timer_time: { id: 8, type: RubyFit::Type.duration },
         total_distance: { id: 9, type: RubyFit::Type.centimeters, required: true },
@@ -115,8 +115,8 @@ class RubyFit::MessageWriter
         avg_vam: { id: 139, type: RubyFit::Type.uint16 },
         event: { id: 0, type: RubyFit::Type.enum, values: RubyFit::MessageConstants::EVENT, required: true },
         event_type: { id: 1, type: RubyFit::Type.enum, values: RubyFit::MessageConstants::EVENT_TYPE, required: true },
-        sport: { id: 5, type: RubyFit::Type.enum, values: RubyFit::MessageConstants::SPORT, required: true},
-        sub_sport: { id: 6, type: RubyFit::Type.enum, values: RubyFit::MessageConstants::SUB_SPORT, required: true},
+        sport: { id: 5, type: RubyFit::Type.enum, values: RubyFit::MessageConstants::SPORT, required: true },
+        sub_sport: { id: 6, type: RubyFit::Type.enum, values: RubyFit::MessageConstants::SUB_SPORT, required: true },
         avg_heart_rate: { id: 16, type: RubyFit::Type.uint8 },
         max_heart_rate: { id: 17, type: RubyFit::Type.uint8 },
         avg_cadence: { id: 18, type: RubyFit::Type.uint8 },
@@ -152,7 +152,7 @@ class RubyFit::MessageWriter
         end_y: { id: 5, type: RubyFit::Type.semicircles },
         end_x: { id: 6, type: RubyFit::Type.semicircles },
         total_distance: { id: 9, type: RubyFit::Type.centimeters }
-      },
+      }
     },
     course_point: {
       id: 32,
@@ -164,14 +164,14 @@ class RubyFit::MessageWriter
         name: { id: 6, type: RubyFit::Type.string(16) },
         message_index: { id: 254, type: RubyFit::Type.uint16 },
         type: { id: 5, type: RubyFit::Type.enum, values: RubyFit::MessageConstants::COURSE_POINT_TYPE, required: true }
-      },
+      }
     },
     record: {
       id: 20,
       fields: {
         timestamp: { id: 253, type: RubyFit::Type.timestamp, required: true },
-        y: { id: 0, type: RubyFit::Type.semicircles, required: true },
-        x: { id: 1, type: RubyFit::Type.semicircles, required: true },
+        y: { id: 0, type: RubyFit::Type.semicircles },
+        x: { id: 1, type: RubyFit::Type.semicircles },
         distance: { id: 5, type: RubyFit::Type.centimeters },
         elevation: { id: 2, type: RubyFit::Type.altitude },
         # new fields for activity type
@@ -200,7 +200,7 @@ class RubyFit::MessageWriter
         timestamp: { id: 253, type: RubyFit::Type.timestamp, required: true },
         event: { id: 0, type: RubyFit::Type.enum, values: RubyFit::MessageConstants::EVENT, required: true },
         event_type: { id: 1, type: RubyFit::Type.enum, values: RubyFit::MessageConstants::EVENT_TYPE, required: true },
-        event_group: { id: 4, type: RubyFit::Type.uint8 },
+        event_group: { id: 4, type: RubyFit::Type.uint8 }
       }
     }
   }
@@ -214,7 +214,7 @@ class RubyFit::MessageWriter
       bytes.push(*num2bytes(message_data[:id], 2)) # Global message ID
       bytes << message_data[:fields].size # Field count
 
-      message_data[:fields].each do |field, info|
+      message_data[:fields].each do |_field, info|
         type = info[:type]
         bytes << info[:id]
         bytes << type.byte_count
@@ -231,13 +231,13 @@ class RubyFit::MessageWriter
         field_type = info[:type]
         value = values[field]
         if info[:required] && value.nil?
-          raise ArgumentError.new("Missing required field '#{field}' in #{type} data message values")
+          raise ArgumentError, "Missing required field '#{field}' in #{type} data message values"
         end
 
         if info[:values]
           value = info[:values][value]
           if value.nil?
-            raise ArgumentError.new("Invalid value for '#{field}' in #{type} data message values")
+            raise ArgumentError, "Invalid value for '#{field}' in #{type} data message values"
           end
         end
 
@@ -249,24 +249,26 @@ class RubyFit::MessageWriter
 
   def self.definition_message_size(type)
     message_data = MESSAGE_DEFINITIONS[type]
-    raise ArgumentError.new("Unknown message type '#{type}'") unless message_data
+    raise ArgumentError, "Unknown message type '#{type}'" unless message_data
+
     6 + message_data[:fields].count * 3
   end
 
   def self.data_message_size(type)
     message_data = MESSAGE_DEFINITIONS[type]
-    raise ArgumentError.new("Unknown message type '#{type}'") unless message_data
-    1 + message_data[:fields].values.map{|info| info[:type].byte_count}.reduce(&:+)
+    raise ArgumentError, "Unknown message type '#{type}'" unless message_data
+
+    1 + message_data[:fields].values.map { |info| info[:type].byte_count }.reduce(&:+)
   end
 
-  def self.file_header(data_byte_count = 0) 
+  def self.file_header(data_byte_count = 0)
     pack_bytes do |bytes|
       bytes << 14 # Header size
       bytes << FIT_PROTOCOL_VERSION # Protocol version
       bytes.push(*num2bytes(FIT_PROFILE_VERSION, 2).reverse) # Profile version (little endian)
       bytes.push(*num2bytes(data_byte_count, 4).reverse) # Data size (little endian)
       bytes.push(*str2bytes(".FIT", 5).take(4)) # Data Type ASCII, no terminator
-      crc = 0 #RubyFit::CRC.update_crc(0, bytes2str(bytes))
+      crc = 0 # RubyFit::CRC.update_crc(0, bytes2str(bytes))
       bytes.push(*num2bytes(crc, 2).reverse) # Header CRC (little endian)
     end
   end
@@ -278,11 +280,11 @@ class RubyFit::MessageWriter
   end
 
   # Internal
-  
+
   def self.header_byte(local_number, definition)
     local_number & 0xF | (definition ? 0x40 : 0x00)
   end
-  
+
   def self.pack_bytes
     bytes = []
     yield bytes
