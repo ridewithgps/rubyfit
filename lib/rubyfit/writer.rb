@@ -1,7 +1,7 @@
 require "rubyfit/message_writer"
 
 class RubyFit::Writer
-  PRODUCT_ID = 65534 # Garmin Connect
+  GARMIN_CONNECT_PRODUCT_ID = 65534
 
   def write(stream, opts = {})
     raise "Can't start write mode from #{@state}" if @state
@@ -24,11 +24,12 @@ class RubyFit::Writer
     data_size = calculate_data_size(opts[:course_point_count], opts[:track_point_count])
     write_data(RubyFit::MessageWriter.file_header(data_size))
 
+    # TODO support passing in manufacturer and product via opts
     write_message(:file_id, {
       time_created: opts[:time_created],
       type: 6, # Course file
       manufacturer: 1, # Garmin
-      product: PRODUCT_ID,
+      product: GARMIN_CONNECT_PRODUCT_ID,
       serial_number: 0,
     })
 
@@ -107,7 +108,7 @@ class RubyFit::Writer
       time_created: opts[:time_created].to_i,
       type: 4, # Activity file
       manufacturer: 1, # Garmin
-      product: PRODUCT_ID,
+      product: GARMIN_CONNECT_PRODUCT_ID,
       serial_number: 0
     })
 
