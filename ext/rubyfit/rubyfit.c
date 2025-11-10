@@ -50,6 +50,27 @@ static VALUE init(VALUE self, VALUE handler) {
 	return Qnil;
 }
 
+static void pass_file_id(VALUE handler, const FIT_FILE_ID_MESG *mesg) {
+	VALUE rh = rb_hash_new();
+
+	if(mesg->serial_number != FIT_UINT32Z_INVALID)
+		rb_hash_aset(rh, rb_str_new2("serial_number"), UINT2NUM(mesg->serial_number));
+	if(mesg->time_created != FIT_DATE_TIME_INVALID)
+		rb_hash_aset(rh, rb_str_new2("time_created"), UINT2NUM(mesg->time_created + GARMIN_TIME_OFFSET));
+	if(*mesg->product_name != FIT_STRING_INVALID)
+		rb_hash_aset(rh, rb_str_new2("product_name"), rb_str_new2(mesg->product_name));
+	if(mesg->manufacturer != FIT_MANUFACTURER_INVALID)
+		rb_hash_aset(rh, rb_str_new2("manufacturer"), UINT2NUM(mesg->manufacturer));
+	if(mesg->product != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("product"), UINT2NUM(mesg->product));
+	if(mesg->number != FIT_UINT16_INVALID)
+		rb_hash_aset(rh, rb_str_new2("number"), UINT2NUM(mesg->number));
+	if(mesg->type != FIT_FILE_INVALID)
+		rb_hash_aset(rh, rb_str_new2("type"), CHR2FIX(mesg->type));
+
+	rb_funcall(handler, rb_intern("on_file_id"), 1, rh);
+}
+
 static void pass_activity(VALUE handler, const FIT_ACTIVITY_MESG *mesg) {
 	VALUE rh = rb_hash_new();
 
@@ -437,6 +458,8 @@ static VALUE parse(VALUE self, VALUE original_str) {
 
 					switch(mesg_num) {
 						case FIT_MESG_NUM_FILE_ID: {
+							const FIT_FILE_ID_MESG *file_id = (FIT_FILE_ID_MESG *) mesg;
+							pass_file_id(handler, file_id);
 							break;
 						}
 

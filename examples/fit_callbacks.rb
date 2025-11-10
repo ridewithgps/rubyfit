@@ -1,9 +1,13 @@
 class FitCallbacks
   def initialize()
   end
-  
+
   def print_msg(msg)
     puts msg
+  end
+
+  def on_file_id(msg)
+    #puts "file id: #{msg.inspect}"
   end
 
   def on_activity(msg)
