@@ -1,6 +1,7 @@
 require "rubyfit/message_writer"
 
 class RubyFit::Writer
+  GARMIN_MANUFACTURER_ID = 1
   GARMIN_CONNECT_PRODUCT_ID = 65534
 
   def write(stream, opts = {})
@@ -24,12 +25,13 @@ class RubyFit::Writer
     data_size = calculate_data_size(opts[:course_point_count], opts[:track_point_count])
     write_data(RubyFit::MessageWriter.file_header(data_size))
 
-    # TODO support passing in manufacturer and product via opts
+    manufacturer, product = extract_manufacturer_and_product(opts)
+
     write_message(:file_id, {
       time_created: opts[:time_created],
       type: 6, # Course file
-      manufacturer: 1, # Garmin
-      product: GARMIN_CONNECT_PRODUCT_ID,
+      manufacturer: manufacturer,
+      product: product,
       serial_number: 0,
     })
 
@@ -77,10 +79,12 @@ class RubyFit::Writer
   #   :total_distance (Integer centimeters)
   #   :sport (Symbol, e.g., :running, see MessageConstants::SPORT)
   #   :sub_sport (Symbol, e.g., :generic, see MessageConstants::SUB_SPORT)
-  # Optional opts (used in lap/session messages):
+  # Optional opts used in lap/session messages:
   #   :start_x, :start_y, :end_x, :end_y lat/long coordinates
   #   :total_calories, :total_ascent, :total_descent, :avg_speed, :max_speed
   #   :avg_heart_rate, :avg_cadence
+  # Optional opts used in file_id message:
+  #   :manufacturer, :product
   def write_activity(stream, opts = {})
     raise "Can't start write mode from #{@state}" if @state
     @state = :write
@@ -104,12 +108,14 @@ class RubyFit::Writer
     data_size = calculate_activity_data_size(opts[:track_point_count])
     write_data(RubyFit::MessageWriter.file_header(data_size))
 
+    manufacturer, product = extract_manufacturer_and_product(opts)
+
     # File ID Message
     write_message(:file_id, {
       time_created: opts[:time_created].to_i,
       type: 4, # Activity file
-      manufacturer: 1, # Garmin
-      product: GARMIN_CONNECT_PRODUCT_ID,
+      manufacturer: manufacturer,
+      product: product,
       serial_number: 0
     })
 
@@ -220,6 +226,16 @@ class RubyFit::Writer
   end
 
   protected
+
+  def extract_manufacturer_and_product(opts)
+    if opts.keys.intersect?([:manufacturer, :product])
+      raise ArgumentError.new("Missing manufacturer but provided product") unless opts.has_key?(:manufacturer)
+      raise ArgumentError.new("Missing product but provided manufacturer") unless opts.has_key?(:product)
+      [opts[:manufacturer], opts[:product]]
+    else
+      [GARMIN_MANUFACTURER_ID, GARMIN_CONNECT_PRODUCT_ID]
+    end
+  end
 
   def write_message(type, values)
     local_num = @local_nums[type]

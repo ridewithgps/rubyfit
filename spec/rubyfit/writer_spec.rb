@@ -359,7 +359,9 @@ describe RubyFit::Writer do
       total_calories: 500,
       avg_heart_rate: 145,
       avg_cadence: 86,
-      max_speed: 8000
+      max_speed: 8000,
+      manufacturer: 999,
+      product: 123
     }
 
     writer.write_activity(stream, opts) do
@@ -391,6 +393,9 @@ describe RubyFit::Writer do
     records = callbacks.records
     session = callbacks.session
 
+    expect(callbacks.file_id["manufacturer"]).to eq(999)
+    expect(callbacks.file_id["product"]).to eq(123)
+
     # Verify we got all the records
     expect(records.size).to eq(track_points.size)
 
@@ -409,5 +414,46 @@ describe RubyFit::Writer do
     expect(session["max_speed"]).to eq(8.0) # Speed is converted to m/s
     expect(session["sport"]).to eq(2)
     expect(session["sub_sport"]).to eq(0)
+  end
+
+  it "raises an error when providing manufacturer but no product" do
+    writer = described_class.new
+    stream = StringIO.new
+    start_time = DateTime.new(2018, 1, 1, 12, 0, 0).to_time.to_i
+
+    opts = {
+      time_created: start_time,
+      start_time: start_time,
+      duration: 3600,
+      start_x: track_points.first[:x],
+      start_y: track_points.first[:y],
+      end_x: track_points.last[:x],
+      end_y: track_points.last[:y],
+      total_distance: total_distance,
+      track_point_count: track_points.size,
+      manufacturer: 999
+    }
+
+    expect { writer.write_activity(stream, opts) }.to raise_error(ArgumentError)
+  end
+  it "raises an error when providing product but no manufacturer" do
+    writer = described_class.new
+    stream = StringIO.new
+    start_time = DateTime.new(2018, 1, 1, 12, 0, 0).to_time.to_i
+
+    opts = {
+      time_created: start_time,
+      start_time: start_time,
+      duration: 3600,
+      start_x: track_points.first[:x],
+      start_y: track_points.first[:y],
+      end_x: track_points.last[:x],
+      end_y: track_points.last[:y],
+      total_distance: total_distance,
+      track_point_count: track_points.size,
+      product: 123
+    }
+
+    expect { writer.write_activity(stream, opts) }.to raise_error(ArgumentError)
   end
 end
