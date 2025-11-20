@@ -127,7 +127,7 @@ describe RubyFit::Writer do
       0, 0, 0, 0, # Serial number
       *timestamp_bytes(start_time), # Time created
       0, 1, # Manufacturer (garmin)
-      *num2bytes(RubyFit::Writer::PRODUCT_ID, 2), # Product
+      *num2bytes(RubyFit::Writer::GARMIN_CONNECT_PRODUCT_ID, 2), # Product
       6, # Type (course file)
     ]
     expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
@@ -253,13 +253,16 @@ describe RubyFit::Writer do
       0, # Padding
       1, # Big endian
       0, 20, # Global message number
-      5, # Field count
+      8, # Field count (updated from 5 to 8)
       # Fields are 3 bytes each - field ID, size in bytes, type ID
       253, 4, 134, # timestamp
       0, 4, 133, # position lat
       1, 4, 133, # position long
       5, 4, 134, # distance
       2, 2, 132, # altitude
+      3, 1, 2, # heart_rate
+      4, 1, 2, # cadence
+      7, 2, 132, # power
     ]
     expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
     
@@ -275,8 +278,11 @@ describe RubyFit::Writer do
         *position_bytes(data[:x]), # lng
         *distance_bytes(distance), # distance
         *altitude_bytes(data[:elevation]), # elevation
+        255, # heart_rate, default value when not provided
+        255, # cadence, default value when not provided
+        255, 255, # power (uint16) default value when not provided
       ]
-      
+
       expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
     end
     
