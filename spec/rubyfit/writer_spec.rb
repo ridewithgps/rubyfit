@@ -260,9 +260,9 @@ describe RubyFit::Writer do
       1, 4, 133, # position long
       5, 4, 134, # distance
       2, 2, 132, # altitude
-      3, 1, 2, # heart_rate (uint8)
-      4, 1, 2, # cadence (uint8)
-      7, 2, 132, # power (uint16)
+      3, 1, 2, # heart_rate
+      4, 1, 2, # cadence
+      7, 2, 132, # power
     ]
     expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
     
@@ -278,9 +278,9 @@ describe RubyFit::Writer do
         *position_bytes(data[:x]), # lng
         *distance_bytes(distance), # distance
         *altitude_bytes(data[:elevation]), # elevation
-        data[:heart_rate], # heart_rate (uint8)
-        data[:cadence], # cadence (uint8)
-        *num2bytes(data[:power], 2), # power (uint16, big endian)
+        data[:heart_rate],
+        data[:cadence],
+        *num2bytes(data[:power], 2),
       ]
 
       expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
