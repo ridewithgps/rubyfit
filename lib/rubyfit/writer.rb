@@ -79,7 +79,8 @@ class RubyFit::Writer
   #   :sub_sport (Symbol, e.g., :generic, see MessageConstants::SUB_SPORT)
   # Optional opts (used in lap/session messages):
   #   :start_x, :start_y, :end_x, :end_y lat/long coordinates
-  #   :total_calories, :total_ascent, :total_descent, :avg_speed, :max_speed, etc.
+  #   :total_calories, :total_ascent, :total_descent, :avg_speed, :max_speed
+  #   :avg_heart_rate, :avg_cadence
   def write_activity(stream, opts = {})
     raise "Can't start write mode from #{@state}" if @state
     @state = :write
@@ -171,7 +172,7 @@ class RubyFit::Writer
       sub_sport: opts[:sub_sport] || :generic
     }.merge(
       # Add optional session fields if available
-      opts.select { |k, _| %i[total_ascent total_descent avg_speed total_calories total_distance max_speed].include?(k) }
+      opts.select { |k, _| %i[total_ascent total_descent avg_speed total_calories total_distance max_speed avg_heart_rate avg_cadence].include?(k) }
     ) # Merge common optional fields
     write_message(:session, session_data)
 

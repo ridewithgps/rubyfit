@@ -7,11 +7,11 @@ describe RubyFit::Writer do
 
   let(:track_points) {
     [
-      {x: -122.64424, y: 45.5279, distance: 0, elevation: 100.0},
-      {x: -122.64355, y: 45.5279, distance: 53.81, elevation: 110.1},
-      {x: -122.64343, y: 45.52791, distance: 63.234, elevation: 120.2},
-      {x: -122.64342, y: 45.52858, distance: 137.822, elevation: 109.3},
-      {x: -122.64251, y: 45.52858, distance: 208.788, elevation: 122.4}
+      {x: -122.64424, y: 45.5279, distance: 0, elevation: 100.0, heart_rate: 140, cadence: 85, power: 220},
+      {x: -122.64355, y: 45.5279, distance: 53.81, elevation: 110.1, heart_rate: 145, cadence: 88, power: 235},
+      {x: -122.64343, y: 45.52791, distance: 63.234, elevation: 120.2, heart_rate: 150, cadence: 90, power: 245},
+      {x: -122.64342, y: 45.52858, distance: 137.822, elevation: 109.3, heart_rate: 148, cadence: 87, power: 230},
+      {x: -122.64251, y: 45.52858, distance: 208.788, elevation: 122.4, heart_rate: 142, cadence: 84, power: 225}
     ]
   }
 
@@ -260,9 +260,9 @@ describe RubyFit::Writer do
       1, 4, 133, # position long
       5, 4, 134, # distance
       2, 2, 132, # altitude
-      3, 1, 2, # heart_rate
-      4, 1, 2, # cadence
-      7, 2, 132, # power
+      3, 1, 2, # heart_rate (uint8)
+      4, 1, 2, # cadence (uint8)
+      7, 2, 132, # power (uint16)
     ]
     expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
     
@@ -278,9 +278,9 @@ describe RubyFit::Writer do
         *position_bytes(data[:x]), # lng
         *distance_bytes(distance), # distance
         *altitude_bytes(data[:elevation]), # elevation
-        255, # heart_rate, default value when not provided
-        255, # cadence, default value when not provided
-        255, 255, # power (uint16) default value when not provided
+        data[:heart_rate], # heart_rate (uint8)
+        data[:cadence], # cadence (uint8)
+        *num2bytes(data[:power], 2), # power (uint16, big endian)
       ]
 
       expect(bytes.shift(expected_bytes.size)).to eq(expected_bytes)
@@ -336,5 +336,78 @@ describe RubyFit::Writer do
     end
 
     stream.close
+  end
+
+  it "writes a valid activity FIT file" do
+    writer = described_class.new
+    stream = StringIO.new
+    start_time = DateTime.new(2018, 1, 1, 12, 0, 0).to_time.to_i
+    duration = 3600
+
+    opts = {
+      time_created: start_time,
+      start_time: start_time,
+      duration: duration,
+      start_x: track_points.first[:x],
+      start_y: track_points.first[:y],
+      end_x: track_points.last[:x],
+      end_y: track_points.last[:y],
+      total_distance: total_distance,
+      track_point_count: track_points.size,
+      sport: :cycling,
+      sub_sport: :generic,
+      total_calories: 500,
+      avg_heart_rate: 145,
+      avg_cadence: 86,
+      max_speed: 8000
+    }
+
+    writer.write_activity(stream, opts) do
+      writer.track_points do
+        timestamp = start_time
+        track_points.each do |data|
+          values = {
+            timestamp: timestamp,
+            x: data[:x],
+            y: data[:y],
+            distance: data[:distance],
+            elevation: data[:elevation],
+            heart_rate: data[:heart_rate],
+            cadence: data[:cadence],
+            power: data[:power]
+          }
+          writer.track_point(values)
+          timestamp += 60 # Increment by 60 seconds for each point
+        end
+      end
+    end
+
+    stream.rewind
+
+    callbacks = TestCallbacks.new
+    parser = RubyFit::FitParser.new(callbacks)
+    parser.parse(stream.read)
+
+    records = callbacks.records
+    session = callbacks.session
+
+    # Verify we got all the records
+    expect(records.size).to eq(track_points.size)
+
+    # Verify the first record has the expected data
+    first_record = records.first
+    expect(first_record["heart_rate"]).to eq(140)
+    expect(first_record["cadence"]).to eq(85)
+    expect(first_record["power"]).to eq(220)
+    expect(first_record["position_lat"]).to be_within(0.001).of(45.5279)
+    expect(first_record["position_long"]).to be_within(0.001).of(-122.64424)
+
+    # Verify session has the aggregated stats
+    expect(session["avg_heart_rate"]).to eq(145)
+    expect(session["avg_cadence"]).to eq(86)
+    expect(session["total_calories"]).to eq(500)
+    expect(session["max_speed"]).to eq(8.0) # Speed is converted to m/s
+    expect(session["sport"]).to eq(2)
+    expect(session["sub_sport"]).to eq(0)
   end
 end
