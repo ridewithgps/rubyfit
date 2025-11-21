@@ -128,13 +128,16 @@ describe RubyFit::MessageWriter do
         0, # Padding
         1, # Big endian
         0, 20, # Global message number
-        5, # Field count
+        8, # Field count
         # Fields are 3 bytes each - field ID, size in bytes, type ID
         253, 4, 134, # timestamp
         0, 4, 133, # position lat
         1, 4, 133, # position long
         5, 4, 134, # distance
         2, 2, 132, # elevation
+        3, 1, 2, # heart_rate
+        4, 1, 2, # cadence
+        7, 2, 132, # power
       ]
       expect(bytes).to eq(expected_bytes)
     end
@@ -345,7 +348,7 @@ describe RubyFit::MessageWriter do
     end
 
     it "returns the correct value for :record" do 
-      expect(described_class.definition_message_size(:record)).to eq(6 + 5*3)
+      expect(described_class.definition_message_size(:record)).to eq(6 + 8*3)
     end
 
     it "returns the correct value for :event" do 
@@ -371,7 +374,7 @@ describe RubyFit::MessageWriter do
     end
 
     it "returns the correct value for :record" do 
-      expect(described_class.data_message_size(:record)).to eq(19)
+      expect(described_class.data_message_size(:record)).to eq(23)
     end
 
     it "returns the correct value for :event" do 
